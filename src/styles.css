@@ -390,6 +390,37 @@ main {
   min-height: min(68vh, 36rem);
 }
 
+.hero-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: min(72vh, 40rem);
+  margin-bottom: 4.5rem;
+}
+
+.hero-centered .hero-main {
+  max-width: 46rem;
+}
+
+.hero-centered .hero h1,
+.hero-centered h1 {
+  max-width: 16ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hero-centered .hero-lead {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 48ch;
+}
+
+.hero-centered .hero-actions {
+  justify-content: center;
+}
+
 .hero-atmosphere {
   position: absolute;
   inset: -3rem -12% auto;
@@ -731,8 +762,8 @@ main {
 }
 
 .pipeline-strip li:hover {
-  border-color: rgba(59, 130, 246, 0.35);
-  box-shadow: var(--shadow-glow);
+  border-color: rgba(194, 65, 12, 0.28);
+  box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
 
@@ -859,7 +890,7 @@ main {
 }
 
 .integration-strip li:hover {
-  border-color: rgba(59, 130, 246, 0.35);
+  border-color: rgba(194, 65, 12, 0.28);
   transform: translateY(-2px);
 }
 
@@ -1143,8 +1174,8 @@ main {
 }
 
 .scenario-card:hover {
-  border-color: rgba(59, 130, 246, 0.35);
-  box-shadow: var(--shadow-glow);
+  border-color: rgba(194, 65, 12, 0.28);
+  box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
 
@@ -1247,11 +1278,13 @@ main {
   gap: 1rem 2rem;
   align-items: center;
   width: 100%;
-  padding: 2rem var(--page-padding) 2.5rem;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 2rem var(--page-padding) 2.75rem;
   border-top: 1px solid var(--border);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
-  background: linear-gradient(180deg, transparent 0%, var(--bg-elevated) 100%);
+  background: transparent;
 }
 
 .footer-install {
@@ -1266,8 +1299,10 @@ main {
   color: var(--text-muted);
 }
 
-.footer-left {
-  margin: 0;
+.footer-left strong {
+  font-family: var(--display);
+  font-weight: 500;
+  color: var(--text);
 }
 
 .footer-links {
@@ -1383,10 +1418,10 @@ main {
     height: 100%;
     height: 100dvh;
     padding: max(1rem, env(safe-area-inset-top)) 1.25rem max(1.5rem, env(safe-area-inset-bottom));
-    background: rgba(9, 9, 11, 0.96);
+    background: rgba(244, 241, 234, 0.98);
     backdrop-filter: blur(16px);
     border-left: 1px solid var(--border);
-    box-shadow: -12px 0 40px rgba(0, 0, 0, 0.55);
+    box-shadow: -12px 0 40px rgba(28, 25, 23, 0.12);
     transform: translateX(100%);
     transition: transform 0.25s ease;
     overflow-y: auto;
@@ -1429,7 +1464,7 @@ main {
     inset: 0;
     z-index: 150;
     border: none;
-    background: rgba(0, 0, 0, 0.65);
+    background: rgba(28, 25, 23, 0.28);
     cursor: pointer;
   }
 
@@ -1640,42 +1675,43 @@ main {
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(59, 130, 246, 0.18), transparent 55%),
-    radial-gradient(ellipse at 80% 40%, rgba(99, 102, 241, 0.08), transparent 40%);
+    radial-gradient(ellipse at 50% 0%, rgba(194, 65, 12, 0.08), transparent 55%),
+    radial-gradient(ellipse at 80% 40%, rgba(255, 255, 255, 0.5), transparent 40%);
   pointer-events: none;
 }
 
 .docs-waitlist-card {
   width: min(100%, 36rem);
   padding: clamp(2rem, 5vw, 3rem);
-  border: 1px solid var(--border-strong);
-  border-radius: calc(var(--radius) + 2px);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 40%), var(--surface);
-  box-shadow: var(--shadow-glow), var(--shadow-md);
-  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: none;
 }
 
 .docs-waitlist-badge {
   display: inline-block;
   margin: 0 0 1rem;
   padding: 0.3rem 0.7rem;
-  font-family: var(--mono);
+  font-family: var(--font);
   font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--accent-hover);
+  color: var(--accent);
   background: var(--accent-soft);
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  border: 1px solid transparent;
   border-radius: 999px;
 }
 
 .docs-waitlist-card h1 {
   margin: 0 0 1rem;
-  font-size: clamp(1.75rem, 4vw, 2.25rem);
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-family: var(--display);
+  font-size: clamp(1.85rem, 4vw, 2.4rem);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
 }
 
 .docs-waitlist-lead {
@@ -1694,13 +1730,13 @@ main {
 .docs-waitlist-fields input {
   flex: 1;
   min-width: 0;
-  padding: 0.65rem 0.9rem;
+  padding: 0.7rem 1rem;
   font-family: var(--font);
   font-size: 0.95rem;
   color: var(--text);
   border: 1px solid var(--border-strong);
   border-radius: 999px;
-  background: var(--bg-elevated);
+  background: #fff;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -1795,24 +1831,26 @@ main {
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(ellipse at 50% 10%, rgba(59, 130, 246, 0.16), transparent 50%),
-    radial-gradient(ellipse at 20% 80%, rgba(99, 102, 241, 0.08), transparent 40%);
+    radial-gradient(ellipse at 50% 10%, rgba(194, 65, 12, 0.07), transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(255, 255, 255, 0.45), transparent 40%);
   pointer-events: none;
 }
 
 .auth-card {
   width: min(100%, 24rem);
   padding: clamp(1.5rem, 4vw, 2rem);
-  border: 1px solid var(--border-strong);
-  border-radius: calc(var(--radius) + 2px);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 42%), var(--surface);
-  box-shadow: var(--shadow-glow), var(--shadow-md);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
 }
 
 .auth-card h1 {
   margin: 0 0 0.5rem;
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-family: var(--display);
+  font-size: 1.75rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
 .auth-subtitle {
@@ -1842,13 +1880,13 @@ main {
 }
 
 .auth-form input {
-  padding: 0.65rem 0.9rem;
+  padding: 0.7rem 0.95rem;
   font-family: var(--font);
   font-size: 0.95rem;
   color: var(--text);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
+  background: #fff;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -1882,35 +1920,37 @@ main {
 
 /* ── Dashboard ──────────────────────────────────────── */
 
-/* Keep the authenticated product chrome on the original light theme */
+/* Keep the authenticated product chrome slightly denser / utilitarian */
 .dashboard-page {
-  --bg: #f6f4ef;
-  --bg-elevated: #f6f4ef;
-  --bg-code: #eeede8;
-  --bg-output: #1a1a18;
-  --surface: #ffffff;
-  --surface-hover: #faf9f6;
-  --text: #1a1a18;
-  --text-muted: #5c5a54;
-  --text-faint: #8a8880;
-  --border: #d8d5cc;
-  --border-strong: #c4c0b5;
-  --border-dark: #2e2e2a;
-  --accent: #1a4d8f;
-  --accent-hover: #153d72;
-  --accent-soft: #eef4fb;
+  --bg: #f4f1ea;
+  --bg-elevated: #faf8f4;
+  --bg-code: #ebe6dc;
+  --bg-output: #1c1917;
+  --surface: #fffcf7;
+  --surface-hover: #f7f3eb;
+  --text: #1c1917;
+  --text-muted: #57534e;
+  --text-faint: #8a847a;
+  --border: #e4ddd1;
+  --border-strong: #d0c8b8;
+  --border-dark: #292524;
+  --accent: #9a3412;
+  --accent-hover: #7c2d12;
+  --accent-soft: rgba(194, 65, 12, 0.1);
   --accent-glow: transparent;
-  --clear: #2d6a4f;
-  --clear-bg: #e8f3ed;
+  --clear: #3f6f52;
+  --clear-bg: #e5efe8;
   --warn: #9a6700;
-  --warn-bg: #faf3e0;
-  --abort: #9b2335;
-  --abort-bg: #fce8eb;
+  --warn-bg: #f5ecd6;
+  --abort: #b42318;
+  --abort-bg: #f8e4e1;
   --shadow-sm: none;
   --shadow-md: none;
   --shadow-glow: none;
-  --radius: 4px;
-  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --font: 'Source Sans 3', system-ui, sans-serif;
+  --display: 'Source Sans 3', system-ui, sans-serif;
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
@@ -1918,7 +1958,7 @@ main {
 }
 
 .dashboard-page .btn {
-  border-radius: 4px;
+  border-radius: 8px;
 }
 
 .dashboard-page .btn-primary {
@@ -1937,11 +1977,13 @@ main {
 }
 
 .dashboard-page .brand-name {
+  font-family: var(--font);
   background: none;
   -webkit-background-clip: unset;
   background-clip: unset;
   color: var(--text);
-  letter-spacing: 0.04em;
+  letter-spacing: -0.01em;
+  font-size: 1rem;
 }
 
 .dashboard-loading {
@@ -2076,7 +2118,7 @@ main {
 }
 
 .dashboard-nav button.active {
-  background: #eef4fb;
+  background: var(--accent-soft);
   color: var(--accent);
   font-weight: 500;
 }

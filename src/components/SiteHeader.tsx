@@ -16,6 +16,8 @@ interface SiteHeaderProps {
 }
 
 const DEFAULT_LINKS: NavLink[] = [
+  { href: '/about', label: 'About' },
+  { href: '/changelog', label: 'Changelog' },
   { href: DOCS_URL, label: 'Docs' },
 ];
 

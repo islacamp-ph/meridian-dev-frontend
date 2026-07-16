@@ -197,7 +197,7 @@ export function Dashboard() {
     <div className="page dashboard-page">
       <header className="dashboard-topbar">
         <a href="/" className="brand">
-          <span className="brand-name">MERIDIAN</span>
+          <span className="brand-name">Meridian</span>
           <span className="brand-domain">dashboard</span>
         </a>
         <div className="dashboard-topbar-actions">
