@@ -1,4 +1,4 @@
-export const GITHUB_REPO = 'https://github.com/armlynobinguar/meridian-core';
+export const GITHUB_REPO = 'https://github.com/islacamp-ph/meridian-core';
 
 /** Docs destination — waitlist until Starlight is live on docs.meridian.dev */
 export const DOCS_URL = import.meta.env.VITE_DOCS_URL ?? '/docs';
