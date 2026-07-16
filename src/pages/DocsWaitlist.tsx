@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { SiteHeader } from '../components/SiteHeader';
 import { GITHUB_REPO } from '../lib/constants';
+import { apiUrl } from '../lib/config';
 
 type FormState = 'idle' | 'submitting' | 'success' | 'error';
 
@@ -16,14 +17,11 @@ export function DocsWaitlist() {
     setState('submitting');
 
     try {
-      const response = await fetch(
-        `${(import.meta.env.VITE_API_URL ?? 'https://api.meridian.dev').replace(/\/$/, '')}/api/waitlist`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, source: 'docs-waitlist' }),
-        },
-      );
+      const response = await fetch(apiUrl('/api/waitlist'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, source: 'docs-waitlist' }),
+      });
 
       const data = await response.json().catch(() => ({}));
 

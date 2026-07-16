@@ -17,8 +17,7 @@ import {
   NPM_SDK,
   PYPI_SDK,
 } from '../lib/constants';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'https://api.meridian.dev';
+import { API_BASE } from '../lib/config';
 
 type DashboardTab = 'overview' | 'api-keys' | 'integrations' | 'usage' | 'webhooks';
 
