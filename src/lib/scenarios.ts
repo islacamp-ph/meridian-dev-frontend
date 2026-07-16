@@ -13,90 +13,77 @@ export interface Scenario {
 export const scenarios: Scenario[] = [
   {
     id: 'governance',
-    name: 'Executing a governance vote',
-    label: 'timelock · treasury · token transfer',
+    name: 'Governance vote',
+    label: 'timelock · treasury',
     verdict: 'abort',
     confidence: 28,
     blastRadius: 82,
     contracts: 14,
     recovery: 'PARTIAL',
-    brief:
-      'Proposal passes simulation but timelock auth is missing. Treasury move would revert on-chain — 3 dependent protocols exposed.',
+    brief: 'Timelock auth missing — treasury move would revert. Three protocols exposed.',
   },
   {
     id: 'subscription',
-    name: 'Charging a monthly subscription',
-    label: 'allowance · billing · merchant wallet',
+    name: 'Subscription charge',
+    label: 'allowance · billing',
     verdict: 'clear',
     confidence: 94,
     blastRadius: 4,
     contracts: 2,
     recovery: 'FULL',
-    brief:
-      'Allowance sufficient, billing contract state valid, single-hop transfer to merchant. Safe to process.',
+    brief: 'Allowance sufficient. Single-hop transfer — safe to process.',
   },
   {
     id: 'bridge',
-    name: 'Depositing assets into a bridge',
-    label: 'lock · mint · message relay',
+    name: 'Bridge deposit',
+    label: 'lock · mint · relay',
     verdict: 'warn',
     confidence: 63,
     blastRadius: 61,
     contracts: 11,
     recovery: 'PARTIAL',
-    brief:
-      'Bridge path is live but relayer contract was upgraded 2 days ago. Confidence reduced — confirm compatibility before depositing.',
+    brief: 'Relayer upgraded 2 days ago. Confirm compatibility before depositing.',
   },
   {
     id: 'listing',
-    name: 'Publishing a marketplace listing',
-    label: 'mint · escrow · royalty split',
+    name: 'Marketplace listing',
+    label: 'mint · escrow',
     verdict: 'warn',
     confidence: 77,
     blastRadius: 22,
     contracts: 5,
     recovery: 'FULL',
-    brief:
-      'Listing creation succeeds but royalty routing touches a deprecated splitter. Works today — update reference before volume scales.',
+    brief: 'Royalty route hits a deprecated splitter. Update before volume scales.',
   },
 ];
 
 export const tickerItems = [
-  'before you hit submit',
-  'will this transaction break?',
-  'who gets affected?',
   'simulate first',
-  'map every contract',
-  'score the blast radius',
   'CLEAR · WARN · ABORT',
-  'pre-execution intelligence',
-  'production is unforgiving',
+  'map every contract',
+  'score blast radius',
   'know what crosses',
 ];
 
 export const integrations = [
   {
     title: 'CI / GitHub Action',
-    description:
-      'Run meridian-action on every PR. Block merges on ABORT or WARN with verdict outputs in your workflow summary.',
+    description: 'Block merges on ABORT or WARN.',
     icon: '↻',
   },
   {
     title: 'CLI & SDKs',
-    description:
-      'meridian-core CLI, @meridian/stellar, and meridian-py — same pipeline from terminal, Node, or Python.',
+    description: 'Same pipeline from terminal or code.',
     icon: '⌘',
   },
   {
-    title: 'Wallet pre-sign flow',
-    description:
-      'Show users a CLEAR / WARN / ABORT badge before they approve — not after the transaction fails.',
+    title: 'Wallet pre-sign',
+    description: 'Show a verdict before users approve.',
     icon: '◎',
   },
   {
-    title: 'Ecosystem manifests',
-    description:
-      'Enrich dependency mapping and blast-radius scoring with shared manifests from the community library.',
+    title: 'Manifests',
+    description: 'Enrich blast-radius scoring.',
     icon: '▣',
   },
 ] as const;

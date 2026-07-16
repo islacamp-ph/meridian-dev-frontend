@@ -16,11 +16,10 @@ interface SiteHeaderProps {
 }
 
 const DEFAULT_LINKS: NavLink[] = [
-  { href: DOCS_URL, label: 'Docs' },
+  { href: '#pipeline', label: 'How it works' },
   { href: '#developers', label: 'Developers' },
-  { href: '#pipeline', label: 'Pipeline' },
-  { href: '#outcomes', label: 'What you get' },
   { href: '#integrations', label: 'Integrations' },
+  { href: DOCS_URL, label: 'Docs' },
 ];
 
 export function SiteHeader({
