@@ -1,5 +1,5 @@
-import { DOCS_URL } from '../lib/constants';
 import { developerTools } from '../lib/developers';
+import { integrations } from '../lib/scenarios';
 
 export function DeveloperTools() {
   const featured = developerTools[0];
@@ -8,7 +8,6 @@ export function DeveloperTools() {
     <section id="developers" className="section section-bordered">
       <header className="section-header section-header-tight">
         <h2>Developers</h2>
-        <p>CLI, SDKs, API, and CI — same pipeline everywhere.</p>
       </header>
 
       <ul className="tool-chips" aria-label="Developer surfaces">
@@ -21,12 +20,14 @@ export function DeveloperTools() {
       </ul>
 
       <div className="tool-feature">
-        <div className="tool-feature-head">
-          <h3>{featured.name}</h3>
-          <a href={DOCS_URL}>Docs waitlist →</a>
-        </div>
         <pre className="developer-snippet"><code>{featured.example}</code></pre>
       </div>
+
+      <ul className="integration-names" aria-label="Integrations">
+        {integrations.map((item) => (
+          <li key={item.title}>{item.title}</li>
+        ))}
+      </ul>
     </section>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { scenarios, type Scenario } from '../lib/scenarios';
-import { DOCS_URL, GITHUB_REPO, INSTALL_CLI } from '../lib/constants';
+import { DOCS_URL } from '../lib/constants';
 
 const CYCLE_MS = 5000;
 
@@ -19,27 +19,11 @@ export function Hero() {
           Know what crosses <span className="hero-accent">before</span> it does.
         </h1>
 
-        <p className="hero-lead">
-          Simulate, map risk, and get a CLEAR / WARN / ABORT verdict before you submit on Stellar.
-        </p>
-
         <div className="hero-actions">
           <a className="btn btn-primary" href={DOCS_URL}>
             Get early access
           </a>
-          <a
-            className="btn btn-secondary"
-            href={GITHUB_REPO}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            GitHub
-          </a>
         </div>
-
-        <p className="hero-note">
-          <code>{INSTALL_CLI}</code>
-        </p>
       </div>
 
       <HeroPanel />

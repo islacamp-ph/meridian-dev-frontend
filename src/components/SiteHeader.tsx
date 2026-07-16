@@ -16,18 +16,15 @@ interface SiteHeaderProps {
 }
 
 const DEFAULT_LINKS: NavLink[] = [
-  { href: '#pipeline', label: 'How it works' },
-  { href: '#developers', label: 'Developers' },
-  { href: '#integrations', label: 'Integrations' },
   { href: DOCS_URL, label: 'Docs' },
 ];
 
 export function SiteHeader({
   links = DEFAULT_LINKS,
   showSignIn = true,
-  showGithub = true,
+  showGithub = false,
   ctaHref = DOCS_URL,
-  ctaLabel = 'Get started',
+  ctaLabel = 'Get early access',
 }: SiteHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 

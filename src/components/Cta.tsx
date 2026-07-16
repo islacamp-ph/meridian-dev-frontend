@@ -5,7 +5,6 @@ export function Cta() {
     <section id="contact" className="section section-bordered cta-section">
       <div className="cta-inner">
         <h2>Analyze before you submit</h2>
-        <p>Join early access, or follow the build on GitHub.</p>
         <div className="cta-actions">
           <a className="btn btn-primary" href={DOCS_URL}>
             Get early access
