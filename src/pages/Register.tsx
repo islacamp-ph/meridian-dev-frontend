@@ -25,7 +25,7 @@ export function Register() {
   return (
     <AuthLayout
       title="Create account"
-      subtitle="Early beta access to the MERIDIAN developer dashboard and API."
+      subtitle="Early beta access to the developer dashboard."
     >
       <form className="auth-form" onSubmit={handleSubmit}>
         <label>

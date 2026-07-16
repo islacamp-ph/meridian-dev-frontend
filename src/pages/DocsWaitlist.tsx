@@ -55,11 +55,9 @@ export function DocsWaitlist() {
       <main className="docs-waitlist-main">
         <div className="docs-waitlist-card">
           <p className="docs-waitlist-badge">Coming soon</p>
-          <h1>Documentation is on the way</h1>
+          <h1>Docs are on the way</h1>
           <p className="docs-waitlist-lead">
-            Full guides for the CLI, SDKs, REST API, GitHub Action, and ecosystem
-            manifests are in early beta. Join the waitlist and we&apos;ll email you
-            when docs access opens.
+            CLI, SDKs, API, and Action guides are in early beta. Join the waitlist for access.
           </p>
 
           {state === 'success' ? (
@@ -97,8 +95,7 @@ export function DocsWaitlist() {
                 <p className="docs-waitlist-error" role="alert">{errorMessage}</p>
               )}
               <p className="docs-waitlist-note">
-                No spam. One email when docs beta opens. Install the CLI today:{' '}
-                <code>npm install -g meridian-core</code>
+                One email when docs open. CLI today: <code>npm install -g meridian-core</code>
               </p>
             </form>
           )}

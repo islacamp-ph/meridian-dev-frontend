@@ -24,7 +24,7 @@ export function Login() {
   return (
     <AuthLayout
       title="Sign in"
-      subtitle="Access your MERIDIAN dashboard, API keys, and developer tools."
+      subtitle="Access your dashboard and API keys."
     >
       <form className="auth-form" onSubmit={handleSubmit}>
         <label>
