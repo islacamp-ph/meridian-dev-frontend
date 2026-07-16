@@ -4,7 +4,7 @@ export function Footer() {
   return (
     <footer className="site-footer">
       <p className="footer-left">
-        <strong>MERIDIAN</strong>
+        <strong>Meridian</strong>
       </p>
       <div className="footer-links">
         <a href={DOCS_URL}>Docs</a>

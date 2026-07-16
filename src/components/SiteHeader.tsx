@@ -48,8 +48,7 @@ export function SiteHeader({
   return (
     <header className="site-header">
       <a href="/" className="brand" onClick={closeMenu}>
-        <span className="brand-name">MERIDIAN</span>
-        <span className="brand-domain">meridian.dev</span>
+        <span className="brand-name">Meridian</span>
       </a>
 
       <button

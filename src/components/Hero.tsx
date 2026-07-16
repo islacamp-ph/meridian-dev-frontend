@@ -8,15 +8,14 @@ export function Hero() {
   return (
     <section className="hero" aria-labelledby="hero-heading">
       <div className="hero-atmosphere" aria-hidden="true">
-        <div className="hero-glow" />
-        <div className="hero-grid" />
+        <div className="hero-wash" />
       </div>
 
       <div className="hero-main">
-        <p className="hero-brand">MERIDIAN</p>
+        <p className="hero-brand">Meridian</p>
 
         <h1 id="hero-heading">
-          Know what crosses <span className="hero-accent">before</span> it does.
+          Know what crosses <em className="hero-accent">before</em> it does.
         </h1>
 
         <div className="hero-actions">
@@ -88,27 +87,27 @@ function ScenarioOutput({ scenario, fading }: { scenario: Scenario; fading: bool
       aria-live="polite"
     >
       <div className="output-bar">
-        <span className="output-title">analysis</span>
+        <span className="output-title">Analysis</span>
         <span className="output-meta">{scenario.label}</span>
       </div>
       <p className="output-scenario-name">{scenario.name}</p>
       <dl className="output-fields">
         <div className="output-row">
-          <dt>verdict</dt>
+          <dt>Verdict</dt>
           <dd>
             <span className={`tag tag-${scenario.verdict}`}>{scenario.verdict.toUpperCase()}</span>
           </dd>
         </div>
         <div className="output-row">
-          <dt>confidence</dt>
+          <dt>Confidence</dt>
           <dd>{scenario.confidence}%</dd>
         </div>
         <div className="output-row">
-          <dt>blast_radius</dt>
+          <dt>Blast radius</dt>
           <dd>{scenario.blastRadius}</dd>
         </div>
         <div className="output-row">
-          <dt>contracts</dt>
+          <dt>Contracts</dt>
           <dd>{scenario.contracts}</dd>
         </div>
       </dl>
