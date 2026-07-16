@@ -16,11 +16,14 @@ export function DocsWaitlist() {
     setState('submitting');
 
     try {
-      const response = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: 'docs-waitlist' }),
-      });
+      const response = await fetch(
+        `${(import.meta.env.VITE_API_URL ?? 'https://api.meridian.dev').replace(/\/$/, '')}/api/waitlist`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, source: 'docs-waitlist' }),
+        },
+      );
 
       const data = await response.json().catch(() => ({}));
 
@@ -44,6 +47,7 @@ export function DocsWaitlist() {
       <SiteHeader
         links={[
           { href: '/', label: 'Home' },
+          { href: '/playground', label: 'Playground' },
           { href: '/about', label: 'About' },
           { href: GITHUB_REPO, label: 'GitHub', external: true },
         ]}

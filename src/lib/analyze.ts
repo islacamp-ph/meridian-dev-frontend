@@ -1,3 +1,5 @@
+import { apiUrl } from './config';
+
 export type AnalyzeVerdict = 'clear' | 'warn' | 'abort';
 
 export interface AnalyzeResult {
@@ -18,7 +20,7 @@ export async function analyzeTransaction(
   tx: string,
   network: 'testnet' | 'mainnet' = 'testnet',
 ): Promise<AnalyzeResult> {
-  const response = await fetch('/api/analyze', {
+  const response = await fetch(apiUrl('/v1/analyze'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tx, network }),

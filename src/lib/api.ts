@@ -1,3 +1,5 @@
+import { apiUrl } from './config';
+
 export interface User {
   id: string;
   email: string;
@@ -14,7 +16,7 @@ export interface ApiKeySummary {
 }
 
 export async function fetchSession(): Promise<{ authenticated: boolean; user?: User }> {
-  const response = await fetch('/api/auth/session', { credentials: 'include' });
+  const response = await fetch(apiUrl('/api/auth/session'), { credentials: 'include' });
   if (!response.ok) {
     return { authenticated: false };
   }
@@ -22,7 +24,7 @@ export async function fetchSession(): Promise<{ authenticated: boolean; user?: U
 }
 
 export async function login(email: string, password: string): Promise<User> {
-  const response = await fetch('/api/auth/login', {
+  const response = await fetch(apiUrl('/api/auth/login'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -40,7 +42,7 @@ export async function register(
   password: string,
   name?: string,
 ): Promise<User> {
-  const response = await fetch('/api/auth/register', {
+  const response = await fetch(apiUrl('/api/auth/register'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -54,11 +56,11 @@ export async function register(
 }
 
 export async function logout(): Promise<void> {
-  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+  await fetch(apiUrl('/api/auth/logout'), { method: 'POST', credentials: 'include' });
 }
 
 export async function listApiKeys(): Promise<ApiKeySummary[]> {
-  const response = await fetch('/api/keys', { credentials: 'include' });
+  const response = await fetch(apiUrl('/api/keys'), { credentials: 'include' });
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.error ?? 'Failed to load API keys');
@@ -67,7 +69,7 @@ export async function listApiKeys(): Promise<ApiKeySummary[]> {
 }
 
 export async function createApiKey(name: string): Promise<ApiKeySummary & { secret: string }> {
-  const response = await fetch('/api/keys', {
+  const response = await fetch(apiUrl('/api/keys'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -81,7 +83,7 @@ export async function createApiKey(name: string): Promise<ApiKeySummary & { secr
 }
 
 export async function revokeApiKey(id: string): Promise<void> {
-  const response = await fetch(`/api/keys/revoke?id=${encodeURIComponent(id)}`, {
+  const response = await fetch(apiUrl(`/api/keys/revoke?id=${encodeURIComponent(id)}`), {
     method: 'DELETE',
     credentials: 'include',
   });
