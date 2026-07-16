@@ -1,22 +1,3 @@
-export const pipelineLayers = [
-  {
-    name: 'TRACE',
-    description: 'Simulate the full execution path.',
-  },
-  {
-    name: 'FIELD',
-    description: 'Map dependencies and TTL risk.',
-  },
-  {
-    name: 'GRAVITY',
-    description: 'Score blast radius and recovery.',
-  },
-  {
-    name: 'BRIEF',
-    description: 'Return a plain-language verdict.',
-  },
-] as const;
-
 export const developerTools = [
   {
     id: 'cli',

@@ -6,6 +6,7 @@ import { Changelog } from './pages/Changelog';
 import { Dashboard } from './pages/Dashboard';
 import { DocsWaitlist } from './pages/DocsWaitlist';
 import { Login } from './pages/Login';
+import { Playground } from './pages/Playground';
 import { Register } from './pages/Register';
 import './styles.css';
 
@@ -18,6 +19,7 @@ function Root() {
   if (path === '/docs' || path.startsWith('/docs/')) return <DocsWaitlist />;
   if (path === '/about') return <About />;
   if (path === '/changelog') return <Changelog />;
+  if (path === '/playground') return <Playground />;
 
   return <App />;
 }

@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { BrandMark } from '../components/BrandMark';
 import {
   createApiKey,
   fetchSession,
@@ -197,6 +198,7 @@ export function Dashboard() {
     <div className="page dashboard-page">
       <header className="dashboard-topbar">
         <a href="/" className="brand">
+          <BrandMark />
           <span className="brand-name">Meridian</span>
           <span className="brand-domain">dashboard</span>
         </a>

@@ -146,14 +146,20 @@ main {
 
 .brand {
   display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
+  align-items: center;
+  gap: 0.65rem;
   color: var(--text);
   text-decoration: none;
 }
 
 .brand:hover {
   text-decoration: none;
+}
+
+.brand-mark {
+  flex-shrink: 0;
+  display: block;
+  border-radius: 9px;
 }
 
 .brand-name {

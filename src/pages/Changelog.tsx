@@ -3,6 +3,7 @@ import { Footer } from '../components/Footer';
 import { DOCS_URL } from '../lib/constants';
 
 const PAGE_LINKS = [
+  { href: '/playground', label: 'Playground' },
   { href: '/about', label: 'About' },
   { href: '/changelog', label: 'Changelog' },
   { href: DOCS_URL, label: 'Docs' },

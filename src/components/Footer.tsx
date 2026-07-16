@@ -7,6 +7,7 @@ export function Footer() {
         <strong>Meridian</strong>
       </p>
       <div className="footer-links">
+        <a href="/playground">Playground</a>
         <a href="/about">About</a>
         <a href="/changelog">Changelog</a>
         <a href={DOCS_URL}>Docs</a>

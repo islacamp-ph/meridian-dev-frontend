@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BrandMark } from './BrandMark';
 import { DOCS_URL, GITHUB_REPO } from '../lib/constants';
 
 export interface NavLink {
@@ -16,10 +17,17 @@ interface SiteHeaderProps {
 }
 
 const DEFAULT_LINKS: NavLink[] = [
+  { href: '/playground', label: 'Playground' },
   { href: '/about', label: 'About' },
   { href: '/changelog', label: 'Changelog' },
   { href: DOCS_URL, label: 'Docs' },
 ];
+
+function isActiveLink(href: string, pathname: string): boolean {
+  if (href.startsWith('http')) return false;
+  if (href === '/') return pathname === '/';
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function SiteHeader({
   links = DEFAULT_LINKS,
@@ -29,6 +37,11 @@ export function SiteHeader({
   ctaLabel = 'Get early access',
 }: SiteHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pathname, setPathname] = useState('/');
+
+  useEffect(() => {
+    setPathname(window.location.pathname);
+  }, []);
 
   useEffect(() => {
     document.body.classList.toggle('nav-open', menuOpen);
@@ -50,6 +63,7 @@ export function SiteHeader({
   return (
     <header className="site-header">
       <a href="/" className="brand" onClick={closeMenu}>
+        <BrandMark />
         <span className="brand-name">Meridian</span>
       </a>
 
@@ -71,17 +85,22 @@ export function SiteHeader({
         className={`site-nav-panel ${menuOpen ? 'site-nav-panel-open' : ''}`}
       >
         <nav className="site-nav" aria-label="Main navigation">
-          {links.map((link) => (
-            <a
-              key={link.href + link.label}
-              href={link.href}
-              target={link.external ? '_blank' : undefined}
-              rel={link.external ? 'noopener noreferrer' : undefined}
-              onClick={closeMenu}
-            >
-              {link.label}
-            </a>
-          ))}
+          {links.map((link) => {
+            const active = !link.external && isActiveLink(link.href, pathname);
+            return (
+              <a
+                key={link.href + link.label}
+                href={link.href}
+                className={active ? 'nav-link-active' : undefined}
+                aria-current={active ? 'page' : undefined}
+                target={link.external ? '_blank' : undefined}
+                rel={link.external ? 'noopener noreferrer' : undefined}
+                onClick={closeMenu}
+              >
+                {link.label}
+              </a>
+            );
+          })}
         </nav>
 
         <div className="header-actions">
