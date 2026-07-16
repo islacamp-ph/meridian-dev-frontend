@@ -50,8 +50,7 @@ export function About() {
               <a href={GITHUB_REPO} target="_blank" rel="noopener noreferrer">
                 GitHub
               </a>
-              , or reach us at{' '}
-              <a href="mailto:hello@meridian.dev">hello@meridian.dev</a>.
+              .
             </p>
           </section>
         </article>
