@@ -44,9 +44,10 @@ export function DocsWaitlist() {
       <SiteHeader
         links={[
           { href: '/', label: 'Home' },
+          { href: '/about', label: 'About' },
           { href: GITHUB_REPO, label: 'GitHub', external: true },
         ]}
-        showSignIn
+        showSignIn={false}
         showGithub={false}
         ctaHref="/login"
         ctaLabel="Sign in"
