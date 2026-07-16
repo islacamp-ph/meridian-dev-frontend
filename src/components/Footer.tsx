@@ -4,11 +4,10 @@ export function Footer() {
   return (
     <footer className="site-footer">
       <p className="footer-left">
-        <strong>MERIDIAN</strong> · Pre-execution intelligence for Stellar developers
+        <strong>MERIDIAN</strong>
       </p>
       <div className="footer-links">
         <a href={DOCS_URL}>Docs</a>
-        <a href={DOCS_URL}>Early access</a>
         <a href={GITHUB_REPO} target="_blank" rel="noopener noreferrer">GitHub</a>
         <a href="mailto:hello@meridian.dev">Contact</a>
       </div>

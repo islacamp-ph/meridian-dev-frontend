@@ -1,19 +1,19 @@
 export const pipelineLayers = [
   {
     name: 'TRACE',
-    description: 'Simulates the transaction against Soroban RPC and parses the execution path.',
+    description: 'Simulate the full execution path.',
   },
   {
     name: 'FIELD',
-    description: 'Maps contract dependencies, checks TTL/archival risk, enriches WASM hashes.',
+    description: 'Map dependencies and TTL risk.',
   },
   {
     name: 'GRAVITY',
-    description: 'Scores blast radius with evidence-based factors and recovery assessment.',
+    description: 'Score blast radius and recovery.',
   },
   {
     name: 'BRIEF',
-    description: 'Synthesizes a grounded, plain-language risk briefing via Claude.',
+    description: 'Return a plain-language verdict.',
   },
 ] as const;
 
@@ -23,16 +23,16 @@ export const developerTools = [
     name: 'CLI',
     package: 'meridian-core',
     install: 'npm install -g meridian-core',
-    description: 'Full pipeline from your terminal — analyze, trace, field, gravity, and manifest tooling.',
+    description: 'Full pipeline from your terminal.',
     example: 'meridian analyze <xdr> --network testnet',
     docsPath: '/guides/cli/',
   },
   {
     id: 'js',
-    name: 'JavaScript SDK',
+    name: 'JS SDK',
     package: '@meridian/stellar',
     install: 'npm install @meridian/stellar',
-    description: 'HTTP client for the REST API plus local engine re-exports for offline analysis.',
+    description: 'Node client for the REST API.',
     example: `import { MeridianClient } from '@meridian/stellar';
 
 const client = new MeridianClient({ baseUrl: 'http://localhost:3000' });
@@ -41,10 +41,10 @@ const result = await client.analyze({ tx: '<xdr>', network: 'testnet' });`,
   },
   {
     id: 'py',
-    name: 'Python SDK',
+    name: 'Python',
     package: 'meridian-py',
     install: 'pip install meridian-py',
-    description: 'Python HTTP client for hosted MERIDIAN API deployments.',
+    description: 'Python client for hosted API.',
     example: `from meridian import MeridianClient
 
 client = MeridianClient("http://localhost:3000")
@@ -56,7 +56,7 @@ result = client.analyze({"tx": "<xdr>", "network": "testnet"})`,
     name: 'REST API',
     package: '@meridian/api',
     install: 'npm run dev --workspace=@meridian/api',
-    description: 'Hono server with OpenAPI docs, batch analysis, Redis cache, and rate limiting.',
+    description: 'Hosted analyze endpoint.',
     example: `curl -X POST http://localhost:3000/v1/analyze \\
   -H "Content-Type: application/json" \\
   -d '{"tx": "<xdr>", "network": "testnet"}'`,
@@ -67,7 +67,7 @@ result = client.analyze({"tx": "<xdr>", "network": "testnet"})`,
     name: 'GitHub Action',
     package: 'meridian-action',
     install: 'uses: ./packages/meridian-action',
-    description: 'Block merges on ABORT or WARN verdicts in CI — CLI or hosted API.',
+    description: 'Block merges on ABORT.',
     example: `- uses: ./packages/meridian-action
   with:
     tx-file: tx.xdr

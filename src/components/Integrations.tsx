@@ -2,24 +2,20 @@ import { integrations } from '../lib/scenarios';
 
 export function Integrations() {
   return (
-    <section id="integrations" className="section section-bordered">
-      <header className="section-header">
-        <h2>Fits into how you already work</h2>
-        <p>
-          MERIDIAN is a layer you add before submit — in your pipeline, your
-          wallet, or your ops stack. Not another dashboard to babysit.
-        </p>
+    <section id="integrations" className="section">
+      <header className="section-header section-header-tight">
+        <h2>Where it fits</h2>
+        <p>Drop in before submit — pipeline, wallet, or ops.</p>
       </header>
 
-      <div className="integration-grid">
+      <ul className="integration-strip">
         {integrations.map((item) => (
-          <article className="integration-card" key={item.title}>
+          <li key={item.title}>
             <span className="integration-icon" aria-hidden="true">{item.icon}</span>
-            <h3>{item.title}</h3>
-            <p>{item.description}</p>
-          </article>
+            <span>{item.title}</span>
+          </li>
         ))}
-      </div>
+      </ul>
     </section>
   );
 }
