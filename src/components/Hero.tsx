@@ -3,11 +3,11 @@ import { DOCS_URL, GITHUB_REPO, INSTALL_CLI } from '../lib/constants';
 export function Hero() {
   return (
     <section className="hero hero-centered" aria-labelledby="hero-heading">
-      <motion className="hero-atmosphere" aria-hidden="true">
-        <motion className="hero-wash" />
-      </motion>
+      <div className="hero-atmosphere" aria-hidden="true">
+        <div className="hero-wash" />
+      </div>
 
-      <motion className="hero-main">
+      <div className="hero-main">
         <p className="hero-brand">Meridian</p>
         <p className="hero-oss">
           Open source · MIT ·{' '}
@@ -40,24 +40,12 @@ export function Hero() {
           >
             GitHub
           </a>
-        </motion>
+        </div>
 
         <p className="hero-note">
           <code>{INSTALL_CLI}</code>
         </p>
-      </motion>
+      </div>
     </section>
-  );
-}
-
-function motion({
-  className,
-  children,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <motion.div className={className} {...props}>
-      {children}
-    </motion.div>
   );
 }
