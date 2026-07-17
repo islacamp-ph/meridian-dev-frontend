@@ -1,19 +1,20 @@
 import { FormEvent, useState } from 'react';
 import { SiteHeader } from '../components/SiteHeader';
 import { Footer } from '../components/Footer';
-import { DOCS_URL } from '../lib/constants';
+import { PAGE_LINKS } from '../lib/nav';
+import {
+  ANALYZE_CMD,
+  DOCKER_RUN,
+  DOCS_URL,
+  INSTALL_CLI,
+} from '../lib/constants';
 import {
   analyzeTransaction,
   normalizeVerdict,
   type AnalyzeResult,
 } from '../lib/analyze';
 
-const PAGE_LINKS = [
-  { href: '/playground', label: 'Playground' },
-  { href: '/about', label: 'About' },
-  { href: '/changelog', label: 'Changelog' },
-  { href: DOCS_URL, label: 'Docs' },
-];
+const PAGE_LINKS_WITH_PLAYGROUND = PAGE_LINKS;
 
 const SAMPLE_XDR =
   'AAAAAgAAAABqJpVIr1RYeFFT0qjGcymwWKeuWvGdq3eBgXw3beH8twAAAGQABPEIAAAAAQAAAAEAAAAAAAAAAAAAAABn8mJgAAAAAAAAAAEAAAAAAAAACwAAAAtIZWxsbyBXb3JsZAAAAAAAAAAAAA==';
