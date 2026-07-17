@@ -39,7 +39,7 @@ export function DeveloperTools() {
 
       <div className="tool-feature">
         <pre className="developer-snippet"><code>{featured.example}</code></pre>
-      </motion>
+      </div>
 
       <div className="tool-commands">
         <p className="tool-commands-label">Also on the CLI</p>
