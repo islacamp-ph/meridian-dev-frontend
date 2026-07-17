@@ -1,6 +1,6 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { AuthLayout } from '../components/AuthLayout';
-import { register } from '../lib/api';
+import { fetchProviders, githubLoginUrl, register } from '../lib/api';
 
 export function Register() {
   const [name, setName] = useState('');
@@ -8,6 +8,11 @@ export function Register() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [githubEnabled, setGithubEnabled] = useState(false);
+
+  useEffect(() => {
+    void fetchProviders().then((providers) => setGithubEnabled(providers.github));
+  }, []);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -27,6 +32,16 @@ export function Register() {
       title="Create account"
       subtitle="Early beta access to the developer dashboard."
     >
+      {githubEnabled && (
+        <>
+          <a className="btn btn-secondary auth-oauth" href={githubLoginUrl()}>
+            Continue with GitHub
+          </a>
+          <div className="auth-divider" role="separator">
+            <span>or</span>
+          </div>
+        </>
+      )}
       <form className="auth-form" onSubmit={handleSubmit}>
         <label>
           Name <span className="label-optional">(optional)</span>

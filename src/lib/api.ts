@@ -5,6 +5,10 @@ export interface User {
   email: string;
   name?: string;
   createdAt?: string;
+  avatarUrl?: string;
+  githubId?: string;
+  hasPassword: boolean;
+  providers: Array<'password' | 'github'>;
 }
 
 export interface ApiKeySummary {
@@ -15,7 +19,32 @@ export interface ApiKeySummary {
   lastUsedAt?: string;
 }
 
-export async function fetchSession(): Promise<{ authenticated: boolean; user?: User }> {
+export interface AuthProviders {
+  password: boolean;
+  github: boolean;
+}
+
+export async function fetchProviders(): Promise<AuthProviders> {
+  try {
+    const response = await fetch(apiUrl('/api/auth/providers'), { credentials: 'include' });
+    if (!response.ok) {
+      return { password: true, github: false };
+    }
+    return response.json();
+  } catch {
+    return { password: true, github: false };
+  }
+}
+
+export function githubLoginUrl(): string {
+  return apiUrl('/api/auth/github');
+}
+
+export async function fetchSession(): Promise<{
+  authenticated: boolean;
+  user?: User;
+  githubOAuthEnabled?: boolean;
+}> {
   const response = await fetch(apiUrl('/api/auth/session'), { credentials: 'include' });
   if (!response.ok) {
     return { authenticated: false };
@@ -57,6 +86,37 @@ export async function register(
 
 export async function logout(): Promise<void> {
   await fetch(apiUrl('/api/auth/logout'), { method: 'POST', credentials: 'include' });
+}
+
+export async function updateAccount(name: string): Promise<User> {
+  const response = await fetch(apiUrl('/api/auth/account'), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ name }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error ?? 'Failed to update account');
+  }
+  return data.user;
+}
+
+export async function changePassword(
+  newPassword: string,
+  currentPassword?: string,
+): Promise<User> {
+  const response = await fetch(apiUrl('/api/auth/password'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ newPassword, currentPassword }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error ?? 'Failed to update password');
+  }
+  return data.user;
 }
 
 export async function listApiKeys(): Promise<ApiKeySummary[]> {

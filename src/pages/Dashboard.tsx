@@ -1,11 +1,14 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { BrandMark } from '../components/BrandMark';
 import {
+  changePassword,
   createApiKey,
   fetchSession,
+  githubLoginUrl,
   listApiKeys,
   logout,
   revokeApiKey,
+  updateAccount,
   type ApiKeySummary,
   type User,
 } from '../lib/api';
@@ -17,9 +20,11 @@ import {
   NPM_SDK,
   PYPI_SDK,
 } from '../lib/constants';
-import { API_BASE } from '../lib/config';
+import { API_BASE as CONFIGURED_API_BASE } from '../lib/config';
 
-type DashboardTab = 'overview' | 'api-keys' | 'integrations' | 'usage' | 'webhooks';
+const API_BASE = CONFIGURED_API_BASE || 'https://api.meridian.dev';
+
+type DashboardTab = 'overview' | 'api-keys' | 'integrations' | 'usage' | 'webhooks' | 'account';
 
 const ANALYZE_CURL = `curl -X POST ${API_BASE}/v1/analyze \\
   -H "Authorization: Bearer <your-api-key>" \\
@@ -130,6 +135,11 @@ export function Dashboard() {
   const [createdSecret, setCreatedSecret] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [githubOAuthEnabled, setGithubOAuthEnabled] = useState(false);
+  const [accountName, setAccountName] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [accountMessage, setAccountMessage] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -139,6 +149,8 @@ export function Dashboard() {
         return;
       }
       setUser(session.user);
+      setAccountName(session.user.name ?? '');
+      setGithubOAuthEnabled(Boolean(session.githubOAuthEnabled));
       try {
         const apiKeys = await listApiKeys();
         setKeys(apiKeys);
@@ -180,6 +192,43 @@ export function Dashboard() {
       if (createdSecret) setCreatedSecret(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to revoke key');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleUpdateName(event: FormEvent) {
+    event.preventDefault();
+    setError('');
+    setAccountMessage('');
+    setBusy(true);
+    try {
+      const next = await updateAccount(accountName);
+      setUser(next);
+      setAccountMessage('Display name updated.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update account');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleUpdatePassword(event: FormEvent) {
+    event.preventDefault();
+    setError('');
+    setAccountMessage('');
+    setBusy(true);
+    try {
+      const next = await changePassword(
+        newPassword,
+        user?.hasPassword ? currentPassword : undefined,
+      );
+      setUser(next);
+      setCurrentPassword('');
+      setNewPassword('');
+      setAccountMessage(user?.hasPassword ? 'Password updated.' : 'Password set. You can also sign in with email.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update password');
     } finally {
       setBusy(false);
     }
@@ -249,6 +298,13 @@ export function Dashboard() {
             >
               Webhooks
               <span className="dashboard-badge">Soon</span>
+            </button>
+            <button
+              type="button"
+              className={tab === 'account' ? 'active' : ''}
+              onClick={() => setTab('account')}
+            >
+              Account
             </button>
           </div>
           <div className="dashboard-nav-footer">
@@ -490,6 +546,115 @@ export function Dashboard() {
                   <a href={DOCS_URL}>Join the docs waitlist</a> — we&apos;ll notify beta users when
                   webhooks ship.
                 </p>
+              </div>
+            </section>
+          )}
+
+          {tab === 'account' && (
+            <section>
+              <h1>Account</h1>
+              <p className="dashboard-lead">
+                Manage your profile, password, and connected sign-in methods.
+              </p>
+
+              {accountMessage && (
+                <p className="dashboard-success" role="status">{accountMessage}</p>
+              )}
+
+              <div className="dashboard-account-grid">
+                <article className="dashboard-account-card">
+                  <h2>Profile</h2>
+                  <dl className="dashboard-account-meta">
+                    <div>
+                      <dt>Email</dt>
+                      <dd>{user?.email}</dd>
+                    </div>
+                    <div>
+                      <dt>Sign-in methods</dt>
+                      <dd>
+                        {(user?.providers ?? []).map((provider) => (
+                          <span key={provider} className="dashboard-provider-pill">
+                            {provider === 'github' ? 'GitHub' : 'Email / password'}
+                          </span>
+                        ))}
+                      </dd>
+                    </div>
+                  </dl>
+                  <form className="dashboard-key-form" onSubmit={handleUpdateName}>
+                    <input
+                      type="text"
+                      value={accountName}
+                      onChange={(e) => setAccountName(e.target.value)}
+                      placeholder="Display name"
+                      disabled={busy}
+                    />
+                    <button type="submit" className="btn btn-primary" disabled={busy}>
+                      Save name
+                    </button>
+                  </form>
+                </article>
+
+                <article className="dashboard-account-card">
+                  <h2>{user?.hasPassword ? 'Change password' : 'Set a password'}</h2>
+                  <p>
+                    {user?.hasPassword
+                      ? 'Update the password used for email sign-in.'
+                      : 'You signed in with GitHub. Optionally set a password so you can also use email login.'}
+                  </p>
+                  <form className="auth-form" onSubmit={handleUpdatePassword}>
+                    {user?.hasPassword && (
+                      <label>
+                        Current password
+                        <input
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          required
+                          autoComplete="current-password"
+                          disabled={busy}
+                        />
+                      </label>
+                    )}
+                    <label>
+                      New password
+                      <input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                        minLength={8}
+                        autoComplete="new-password"
+                        disabled={busy}
+                      />
+                    </label>
+                    <button type="submit" className="btn btn-primary" disabled={busy}>
+                      {user?.hasPassword ? 'Update password' : 'Set password'}
+                    </button>
+                  </form>
+                </article>
+
+                <article className="dashboard-account-card">
+                  <h2>GitHub</h2>
+                  {user?.githubId ? (
+                    <p>
+                      Connected as GitHub user <code>{user.githubId}</code>.
+                      You can continue signing in with GitHub.
+                    </p>
+                  ) : githubOAuthEnabled ? (
+                    <>
+                      <p>Link GitHub to enable one-click sign-in for this account.</p>
+                      <a className="btn btn-secondary" href={githubLoginUrl()}>
+                        Connect GitHub
+                      </a>
+                    </>
+                  ) : (
+                    <p>
+                      GitHub OAuth is not configured on the API yet. Ask your admin to set
+                      <code> GITHUB_CLIENT_ID</code>, <code>GITHUB_CLIENT_SECRET</code>, and
+                      <code> GITHUB_REDIRECT_URI</code>.
+                    </p>
+                  )}
+                </article>
               </div>
             </section>
           )}

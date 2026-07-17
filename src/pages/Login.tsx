@@ -1,12 +1,22 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { AuthLayout } from '../components/AuthLayout';
-import { login } from '../lib/api';
+import { fetchProviders, githubLoginUrl, login } from '../lib/api';
+
+function readQueryError(): string {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('error') ?? '';
+}
 
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(readQueryError);
   const [loading, setLoading] = useState(false);
+  const [githubEnabled, setGithubEnabled] = useState(false);
+
+  useEffect(() => {
+    void fetchProviders().then((providers) => setGithubEnabled(providers.github));
+  }, []);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -26,6 +36,16 @@ export function Login() {
       title="Sign in"
       subtitle="Access your dashboard and API keys."
     >
+      {githubEnabled && (
+        <>
+          <a className="btn btn-secondary auth-oauth" href={githubLoginUrl()}>
+            Continue with GitHub
+          </a>
+          <div className="auth-divider" role="separator">
+            <span>or</span>
+          </div>
+        </>
+      )}
       <form className="auth-form" onSubmit={handleSubmit}>
         <label>
           Email
