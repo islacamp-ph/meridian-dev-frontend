@@ -1,5 +1,6 @@
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
+import { VerdictBand } from './components/VerdictBand';
 import { DeveloperTools } from './components/DeveloperTools';
 import { Cta } from './components/Cta';
 import { Footer } from './components/Footer';
@@ -14,10 +15,14 @@ function App() {
         <Hero />
 
         <Reveal>
-          <DeveloperTools />
+          <VerdictBand />
         </Reveal>
 
         <Reveal delay={60}>
+          <DeveloperTools />
+        </Reveal>
+
+        <Reveal delay={80}>
           <Cta />
         </Reveal>
       </main>

@@ -4,7 +4,6 @@ import { PAGE_LINKS } from '../lib/nav';
 import {
   ANALYZE_CMD,
   DIFF_CMD,
-  DOCS_URL,
   GITHUB_DOCS_SRC,
   GITHUB_README,
   GITHUB_REPO,

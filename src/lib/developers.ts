@@ -1,7 +1,6 @@
 import {
   GITHUB_ACTION,
   GITHUB_API,
-  GITHUB_REPO,
   NPM_CLI,
   NPM_SDK,
   PYPI_SDK,

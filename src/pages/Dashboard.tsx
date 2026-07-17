@@ -206,6 +206,11 @@ export function Dashboard() {
         </div>
       </header>
 
+      <div className="dashboard-beta-banner" role="status">
+        Early beta — hosted API and keys may be limited. Prefer{' '}
+        <a href={DOCS_URL}>CLI quickstart</a> or self-host for production.
+      </div>
+
       <div className="dashboard-shell">
         <nav className="dashboard-nav" aria-label="Dashboard">
           <div className="dashboard-nav-items">

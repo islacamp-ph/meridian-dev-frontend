@@ -7,17 +7,10 @@ export interface NavLink {
 }
 
 export const PAGE_LINKS: NavLink[] = [
-  { href: DOCS_URL, label: 'Docs' },
-  { href: '/playground', label: 'Playground' },
-  { href: '/ci', label: 'CI' },
-  { href: '/manifests', label: 'Manifests' },
-  { href: '/about', label: 'About' },
-];
-
-/** Home page nav — shorter set */
-export const DEFAULT_LINKS: NavLink[] = [
-  { href: DOCS_URL, label: 'Docs' },
   { href: '/playground', label: 'Playground' },
   { href: '/about', label: 'About' },
   { href: '/changelog', label: 'Changelog' },
+  { href: DOCS_URL, label: 'Docs' },
 ];
+
+export const DEFAULT_LINKS: NavLink[] = PAGE_LINKS;

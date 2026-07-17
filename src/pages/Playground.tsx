@@ -3,18 +3,10 @@ import { SiteHeader } from '../components/SiteHeader';
 import { Footer } from '../components/Footer';
 import { PAGE_LINKS } from '../lib/nav';
 import {
-  ANALYZE_CMD,
-  DOCKER_RUN,
-  DOCS_URL,
-  INSTALL_CLI,
-} from '../lib/constants';
-import {
   analyzeTransaction,
   normalizeVerdict,
   type AnalyzeResult,
 } from '../lib/analyze';
-
-const PAGE_LINKS_WITH_PLAYGROUND = PAGE_LINKS;
 
 const SAMPLE_XDR =
   'AAAAAgAAAABqJpVIr1RYeFFT0qjGcymwWKeuWvGdq3eBgXw3beH8twAAAGQABPEIAAAAAQAAAAEAAAAAAAAAAAAAAABn8mJgAAAAAAAAAAEAAAAAAAAACwAAAAtIZWxsbyBXb3JsZAAAAAAAAAAAAA==';
@@ -55,7 +47,7 @@ export function Playground() {
           <p className="content-eyebrow">Playground</p>
           <h1>Paste XDR. Get a verdict.</h1>
           <p className="content-lead">
-            Run a live analysis against Meridian. Early beta — results depend on API availability.
+            Paste a transaction XDR and get CLEAR, WARN, or ABORT.
           </p>
 
           <form className="playground-form" onSubmit={handleSubmit}>

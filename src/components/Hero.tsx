@@ -9,28 +9,19 @@ export function Hero() {
 
       <div className="hero-main">
         <p className="hero-brand">Meridian</p>
-        <p className="hero-oss">
-          Open source · MIT ·{' '}
-          <a href={GITHUB_REPO} target="_blank" rel="noopener noreferrer">
-            meridian-core
-          </a>
-        </p>
 
         <h1 id="hero-heading">
           Know what crosses <em className="hero-accent">before</em> it does.
         </h1>
 
         <p className="hero-lead">
-          Pre-execution intelligence for Stellar. Simulate, map dependencies,
-          score blast radius, and get CLEAR / WARN / ABORT before you submit.
+          Pre-execution intelligence for Stellar. Simulate, score blast radius,
+          and get a verdict before you submit.
         </p>
 
         <div className="hero-actions">
           <a className="btn btn-primary" href={DOCS_URL}>
             Quickstart
-          </a>
-          <a className="btn btn-secondary" href="/playground">
-            Playground
           </a>
           <a
             className="btn btn-secondary"
