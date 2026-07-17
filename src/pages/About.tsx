@@ -1,13 +1,7 @@
 import { SiteHeader } from '../components/SiteHeader';
 import { Footer } from '../components/Footer';
-import { DOCS_URL, GITHUB_REPO } from '../lib/constants';
-
-const PAGE_LINKS = [
-  { href: '/playground', label: 'Playground' },
-  { href: '/about', label: 'About' },
-  { href: '/changelog', label: 'Changelog' },
-  { href: DOCS_URL, label: 'Docs' },
-];
+import { PAGE_LINKS } from '../lib/nav';
+import { DOCS_URL, GITHUB_EXAMPLES, GITHUB_REPO } from '../lib/constants';
 
 export function About() {
   return (
@@ -20,7 +14,11 @@ export function About() {
           <h1>Built for the moment before submit</h1>
           <p className="content-lead">
             Meridian is pre-execution intelligence for Stellar developers —
-            a layer between your app and the chain.
+            open source under MIT in the{' '}
+            <a href={GITHUB_REPO} target="_blank" rel="noopener noreferrer">
+              meridian-core
+            </a>{' '}
+            monorepo.
           </p>
 
           <section className="content-block">
@@ -38,19 +36,20 @@ export function About() {
             <p>
               Simulation alone is not enough. You need a verdict you can act on:
               CLEAR, WARN, or ABORT — grounded in execution traces, TTL risk,
-              and downstream impact. Same pipeline from CLI, SDK, API, or CI.
+              archival warnings, and downstream impact. Same pipeline from CLI,
+              SDK, API, or CI, with optional <code>fix_sequence</code> guidance.
             </p>
           </section>
 
           <section className="content-block">
-            <h2>Who builds it</h2>
+            <h2>Open source</h2>
             <p>
-              Meridian is an early-beta product for developers shipping on
-              Stellar. Follow the work on{' '}
-              <a href={GITHUB_REPO} target="_blank" rel="noopener noreferrer">
-                GitHub
-              </a>
-              .
+              Core packages ship on npm and PyPI. Examples like{' '}
+              <a href={GITHUB_EXAMPLES} target="_blank" rel="noopener noreferrer">
+                ScholarSeal
+              </a>{' '}
+              live in the repo. Hosted API and dashboard are early beta — start
+              with the <a href={DOCS_URL}>Quickstart</a> or run locally.
             </p>
           </section>
         </article>

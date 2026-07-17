@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react';
 import { BrandMark } from './BrandMark';
 import { DOCS_URL, GITHUB_REPO } from '../lib/constants';
+import { DEFAULT_LINKS, type NavLink } from '../lib/nav';
 
-export interface NavLink {
-  href: string;
-  label: string;
-  external?: boolean;
-}
+export type { NavLink };
 
 interface SiteHeaderProps {
   links?: NavLink[];
@@ -15,13 +12,6 @@ interface SiteHeaderProps {
   ctaHref?: string;
   ctaLabel?: string;
 }
-
-const DEFAULT_LINKS: NavLink[] = [
-  { href: '/playground', label: 'Playground' },
-  { href: '/about', label: 'About' },
-  { href: '/changelog', label: 'Changelog' },
-  { href: DOCS_URL, label: 'Docs' },
-];
 
 function isActiveLink(href: string, pathname: string): boolean {
   if (href.startsWith('http')) return false;
@@ -34,7 +24,7 @@ export function SiteHeader({
   showSignIn = true,
   showGithub = false,
   ctaHref = DOCS_URL,
-  ctaLabel = 'Get early access',
+  ctaLabel = 'Quickstart',
 }: SiteHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [pathname, setPathname] = useState('/');

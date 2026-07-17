@@ -1,31 +1,34 @@
 import { SiteHeader } from '../components/SiteHeader';
 import { Footer } from '../components/Footer';
-import { DOCS_URL } from '../lib/constants';
-
-const PAGE_LINKS = [
-  { href: '/playground', label: 'Playground' },
-  { href: '/about', label: 'About' },
-  { href: '/changelog', label: 'Changelog' },
-  { href: DOCS_URL, label: 'Docs' },
-];
+import { PAGE_LINKS } from '../lib/nav';
 
 const entries = [
+  {
+    date: '2026-07-17',
+    title: 'Public site aligned with meridian-core',
+    items: [
+      'Quickstart docs, CI and manifests pages',
+      'CLI-first hero, verdict band, run-locally section',
+      'Developer links to npm, PyPI, examples, and Action source',
+    ],
+  },
   {
     date: '2026-07-08',
     title: 'Early beta dashboard',
     items: [
       'Account sign-in and API key management',
       'Usage overview and integration snippets',
-      'Docs waitlist for early access',
+      'Hosted API optional — CLI and self-host supported',
     ],
   },
   {
     date: '2026-06-20',
     title: 'Developer surfaces',
     items: [
-      'CLI package meridian-core',
-      'JavaScript and Python SDK clients',
+      'CLI package meridian-core on npm',
+      '@meridian/stellar and meridian-py SDKs',
       'GitHub Action for CI verdict gates',
+      'Ecosystem manifest init and validate',
     ],
   },
   {
@@ -33,16 +36,16 @@ const entries = [
     title: 'Core pipeline',
     items: [
       'TRACE → FIELD → GRAVITY → BRIEF analysis path',
-      'CLEAR / WARN / ABORT verdicts',
-      'Blast-radius scoring and plain-language briefs',
+      'CLEAR / WARN / ABORT verdicts with fix_sequence',
+      'Blast-radius scoring, TTL and archival warnings',
     ],
   },
   {
     date: '2026-04-01',
     title: 'Meridian launched',
     items: [
-      'Public site and early access waitlist',
-      'First testnet analysis endpoints',
+      'meridian-core monorepo open sourced (MIT)',
+      'First testnet analyze endpoints',
     ],
   },
 ] as const;
@@ -57,7 +60,7 @@ export function Changelog() {
           <p className="content-eyebrow">Changelog</p>
           <h1>What shipped</h1>
           <p className="content-lead">
-            Notable releases and milestones. Dates are approximate for early beta.
+            Notable releases and milestones from the meridian-core monorepo and this site.
           </p>
 
           <ol className="changelog-list">
