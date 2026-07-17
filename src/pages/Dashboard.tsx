@@ -3,13 +3,24 @@ import { BrandMark } from '../components/BrandMark';
 import {
   changePassword,
   createApiKey,
+  createProject,
+  fetchUsage,
   fetchSession,
+  getAnalysis,
   githubLoginUrl,
+  listAnalyses,
   listApiKeys,
+  listProjects,
   logout,
+  removeProject,
+  runDashboardAnalysis,
   revokeApiKey,
   updateAccount,
   type ApiKeySummary,
+  type AnalysisSummary,
+  type DashboardAnalyzeResult,
+  type Project,
+  type UsageSummary,
   type User,
 } from '../lib/api';
 import {
@@ -24,7 +35,22 @@ import { API_BASE as CONFIGURED_API_BASE } from '../lib/config';
 
 const API_BASE = CONFIGURED_API_BASE || 'https://api.meridian.dev';
 
-type DashboardTab = 'overview' | 'api-keys' | 'integrations' | 'usage' | 'webhooks' | 'account';
+type DashboardTab = 'overview' | 'projects' | 'api-keys' | 'playground' | 'integrations' | 'usage' | 'webhooks' | 'account';
+
+const NAV_ITEMS: Array<{
+  id: DashboardTab;
+  label: string;
+  badge?: string;
+}> = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'projects', label: 'Projects' },
+  { id: 'api-keys', label: 'API keys' },
+  { id: 'playground', label: 'Playground' },
+  { id: 'integrations', label: 'Integrations' },
+  { id: 'usage', label: 'Usage' },
+  { id: 'webhooks', label: 'Webhooks', badge: 'Soon' },
+  { id: 'account', label: 'Account' },
+];
 
 const ANALYZE_CURL = `curl -X POST ${API_BASE}/v1/analyze \\
   -H "Authorization: Bearer <your-api-key>" \\
@@ -74,6 +100,27 @@ const WEBHOOK_PAYLOAD_EXAMPLE = `{
   }
 }`;
 
+function initials(user: User | null): string {
+  if (!user) return '?';
+  if (user.name?.trim()) {
+    return user.name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? '')
+      .join('');
+  }
+  return user.email.slice(0, 2).toUpperCase();
+}
+
+function formatDate(value: string): string {
+  return new Date(value).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -106,7 +153,7 @@ function IntegrationCard({
   links?: Array<{ href: string; label: string }>;
 }) {
   return (
-    <article className="dashboard-integration-card">
+    <article className="dashboard-panel dashboard-integration-card">
       <div className="dashboard-integration-card-head">
         <h3>{title}</h3>
         <CopyButton text={code} />
@@ -129,6 +176,11 @@ function IntegrationCard({
 export function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [keys, setKeys] = useState<ApiKeySummary[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [usage, setUsage] = useState<UsageSummary | null>(null);
+  const [analyses, setAnalyses] = useState<AnalysisSummary[]>([]);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<AnalysisSummary | null>(null);
   const [tab, setTab] = useState<DashboardTab>('overview');
   const [loading, setLoading] = useState(true);
   const [newKeyName, setNewKeyName] = useState('Production');
@@ -140,6 +192,11 @@ export function Dashboard() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [accountMessage, setAccountMessage] = useState('');
+  const [newProjectName, setNewProjectName] = useState('');
+  const [keyNetwork, setKeyNetwork] = useState<'testnet' | 'mainnet'>('testnet');
+  const [playgroundTx, setPlaygroundTx] = useState('');
+  const [playgroundNetwork, setPlaygroundNetwork] = useState<'testnet' | 'mainnet'>('testnet');
+  const [playgroundResult, setPlaygroundResult] = useState<DashboardAnalyzeResult | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -152,8 +209,17 @@ export function Dashboard() {
       setAccountName(session.user.name ?? '');
       setGithubOAuthEnabled(Boolean(session.githubOAuthEnabled));
       try {
-        const apiKeys = await listApiKeys();
+        const [apiKeys, projectList, usageData, recent] = await Promise.all([
+          listApiKeys(),
+          listProjects(),
+          fetchUsage(),
+          listAnalyses(undefined, 20),
+        ]);
         setKeys(apiKeys);
+        setProjects(projectList);
+        setSelectedProjectId(projectList.find((project) => project.isDefault)?.id ?? projectList[0]?.id ?? '');
+        setUsage(usageData);
+        setAnalyses(recent);
       } catch {
         setKeys([]);
       }
@@ -161,6 +227,11 @@ export function Dashboard() {
     }
     void load();
   }, []);
+
+  useEffect(() => {
+    setError('');
+    setAccountMessage('');
+  }, [tab]);
 
   async function handleLogout() {
     await logout();
@@ -172,7 +243,7 @@ export function Dashboard() {
     setError('');
     setBusy(true);
     try {
-      const key = await createApiKey(newKeyName);
+      const key = await createApiKey(newKeyName, selectedProjectId, keyNetwork);
       setCreatedSecret(key.secret);
       setKeys(await listApiKeys());
       setNewKeyName('Production');
@@ -183,9 +254,71 @@ export function Dashboard() {
     }
   }
 
+  async function handleCreateProject(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const project = await createProject(newProjectName);
+      setProjects(await listProjects());
+      setSelectedProjectId(project.id);
+      setNewProjectName('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create project');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteProject(id: string) {
+    if (!confirm('Delete this empty project?')) return;
+    setBusy(true);
+    try {
+      await removeProject(id);
+      const next = await listProjects();
+      setProjects(next);
+      setSelectedProjectId(next.find((project) => project.isDefault)?.id ?? next[0]?.id ?? '');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete project');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handlePlayground(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    setPlaygroundResult(null);
+    try {
+      const result = await runDashboardAnalysis({
+        projectId: selectedProjectId,
+        tx: playgroundTx.trim(),
+        network: playgroundNetwork,
+      });
+      setPlaygroundResult(result);
+      const [nextUsage, recent] = await Promise.all([fetchUsage(), listAnalyses(undefined, 20)]);
+      setUsage(nextUsage);
+      setAnalyses(recent);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Analysis failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleAnalysisDetail(id: string) {
+    try {
+      setSelectedAnalysis(await getAnalysis(id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load analysis');
+    }
+  }
+
   async function handleRevoke(id: string) {
     if (!confirm('Revoke this API key? Applications using it will stop working.')) return;
     setBusy(true);
+    setError('');
     try {
       await revokeApiKey(id);
       setKeys(await listApiKeys());
@@ -226,7 +359,11 @@ export function Dashboard() {
       setUser(next);
       setCurrentPassword('');
       setNewPassword('');
-      setAccountMessage(user?.hasPassword ? 'Password updated.' : 'Password set. You can also sign in with email.');
+      setAccountMessage(
+        user?.hasPassword
+          ? 'Password updated.'
+          : 'Password set. You can also sign in with email.',
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update password');
     } finally {
@@ -237,79 +374,68 @@ export function Dashboard() {
   if (loading) {
     return (
       <div className="page dashboard-page">
-        <p className="dashboard-loading">Loading dashboard…</p>
+        <div className="dashboard-loading-shell" aria-busy="true">
+          <div className="dashboard-loading-bar" />
+          <p>Loading dashboard…</p>
+        </div>
       </div>
     );
   }
 
+  const hasKeys = keys.length > 0;
+  const displayName = user?.name?.trim() || user?.email?.split('@')[0] || 'there';
+
   return (
     <div className="page dashboard-page">
       <header className="dashboard-topbar">
-        <a href="/" className="brand">
+        <a href="/" className="brand dashboard-brand">
           <BrandMark />
           <span className="brand-name">Meridian</span>
           <span className="brand-domain">dashboard</span>
         </a>
         <div className="dashboard-topbar-actions">
-          <span className="dashboard-user">{user?.email}</span>
+          <a className="dashboard-topbar-link" href={DOCS_URL}>
+            Docs
+          </a>
+          <div className="dashboard-user-chip" title={user?.email}>
+            <span className="dashboard-avatar" aria-hidden="true">
+              {initials(user)}
+            </span>
+            <span className="dashboard-user-meta">
+              <strong>{displayName}</strong>
+              <span>{user?.email}</span>
+            </span>
+          </div>
         </div>
       </header>
 
       <div className="dashboard-beta-banner" role="status">
-        Early beta — hosted API and keys may be limited. Prefer{' '}
-        <a href={DOCS_URL}>CLI quickstart</a> or self-host for production.
+        <span className="dashboard-beta-pill">Early beta</span>
+        <p>
+          Hosted API and keys may be limited. Prefer the{' '}
+          <a href={DOCS_URL}>CLI quickstart</a> or self-host for production.
+        </p>
       </div>
 
       <div className="dashboard-shell">
         <nav className="dashboard-nav" aria-label="Dashboard">
           <div className="dashboard-nav-items">
-            <button
-              type="button"
-              className={tab === 'overview' ? 'active' : ''}
-              onClick={() => setTab('overview')}
-            >
-              Overview
-            </button>
-            <button
-              type="button"
-              className={tab === 'api-keys' ? 'active' : ''}
-              onClick={() => setTab('api-keys')}
-            >
-              API keys
-            </button>
-            <button
-              type="button"
-              className={tab === 'integrations' ? 'active' : ''}
-              onClick={() => setTab('integrations')}
-            >
-              Integrations
-            </button>
-            <button
-              type="button"
-              className={tab === 'usage' ? 'active' : ''}
-              onClick={() => setTab('usage')}
-            >
-              Usage
-            </button>
-            <button
-              type="button"
-              className={tab === 'webhooks' ? 'active' : ''}
-              onClick={() => setTab('webhooks')}
-            >
-              Webhooks
-              <span className="dashboard-badge">Soon</span>
-            </button>
-            <button
-              type="button"
-              className={tab === 'account' ? 'active' : ''}
-              onClick={() => setTab('account')}
-            >
-              Account
-            </button>
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={tab === item.id ? 'active' : ''}
+                onClick={() => setTab(item.id)}
+                aria-current={tab === item.id ? 'page' : undefined}
+              >
+                <span>{item.label}</span>
+                {item.badge && <span className="dashboard-badge">{item.badge}</span>}
+              </button>
+            ))}
           </div>
           <div className="dashboard-nav-footer">
-            <a className="dashboard-nav-link" href={DOCS_URL}>
-              Docs
+            <a className="dashboard-nav-link" href="/playground">
+              Playground
             </a>
             <button type="button" className="dashboard-nav-link danger" onClick={handleLogout}>
               Sign out
@@ -318,122 +444,312 @@ export function Dashboard() {
         </nav>
 
         <main className="dashboard-main">
-          {error && <p className="dashboard-error" role="alert">{error}</p>}
+          {error && (
+            <div className="dashboard-error" role="alert">
+              <span>{error}</span>
+              <button type="button" className="dashboard-alert-dismiss" onClick={() => setError('')}>
+                Dismiss
+              </button>
+            </div>
+          )}
 
           {tab === 'overview' && (
-            <section>
-              <h1>Welcome{user?.name ? `, ${user.name}` : ''}</h1>
-              <p className="dashboard-lead">
-                Your MERIDIAN developer account is on the <strong>Early Beta</strong> plan.
-                Generate API keys, then connect via the REST API, CLI, or SDKs.
-              </p>
+            <section className="dashboard-section">
+              <header className="dashboard-section-intro">
+                <p className="dashboard-eyebrow">Developer account</p>
+                <h1>Welcome back, {displayName}</h1>
+                <p className="dashboard-lead">
+                  Generate an API key, wire up an integration, then run TRACE → FIELD → GRAVITY
+                  before your next Soroban submit.
+                </p>
+              </header>
+
               <div className="dashboard-stat-grid">
                 <article className="dashboard-stat">
-                  <strong>{keys.length}</strong>
                   <span>API keys</span>
+                  <strong>{keys.length}<small>/5</small></strong>
                 </article>
                 <article className="dashboard-stat">
-                  <strong>Beta</strong>
                   <span>Plan</span>
+                  <strong>Early beta</strong>
                 </article>
                 <article className="dashboard-stat">
-                  <strong>4</strong>
-                  <span>Pipeline layers</span>
+                  <span>Pipeline</span>
+                  <strong>4 layers</strong>
                 </article>
               </div>
-              <div className="dashboard-quick-actions">
-                <button type="button" className="btn btn-primary" onClick={() => setTab('api-keys')}>
-                  Generate API key
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={() => setTab('integrations')}>
-                  View integrations
+
+              <div className="dashboard-panel dashboard-checklist">
+                <div className="dashboard-panel-head">
+                  <h2>Get started</h2>
+                  <p>Two steps to your first analysis.</p>
+                </div>
+                <ol className="dashboard-steps">
+                  <li className={hasKeys ? 'done' : ''}>
+                    <div>
+                      <strong>Create an API key</strong>
+                      <p>Keys authenticate REST, SDK, and CI calls.</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-primary compact"
+                      onClick={() => setTab('api-keys')}
+                    >
+                      {hasKeys ? 'Manage keys' : 'Generate key'}
+                    </button>
+                  </li>
+                  <li>
+                    <div>
+                      <strong>Connect an integration</strong>
+                      <p>Copy a curl, SDK, or GitHub Action snippet.</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary compact"
+                      onClick={() => setTab('integrations')}
+                    >
+                      View integrations
+                    </button>
+                  </li>
+                </ol>
+              </div>
+
+              <div className="dashboard-quick-grid">
+                <a className="dashboard-quick-card" href={`${API_BASE}/v1/docs`} target="_blank" rel="noopener noreferrer">
+                  <strong>API docs</strong>
+                  <span>OpenAPI + Swagger UI</span>
+                </a>
+                <a className="dashboard-quick-card" href={DOCS_URL}>
+                  <strong>Guides</strong>
+                  <span>CLI, manifests, verdicts</span>
+                </a>
+                <button type="button" className="dashboard-quick-card" onClick={() => setTab('account')}>
+                  <strong>Account</strong>
+                  <span>Password &amp; GitHub</span>
                 </button>
               </div>
+              <div className="dashboard-panel dashboard-history-panel">
+                <div className="dashboard-panel-head">
+                  <h2>Recent analyses</h2>
+                  <p>Your latest pre-execution verdicts.</p>
+                </div>
+                {analyses.length === 0 ? (
+                  <div className="dashboard-empty-state">Run your first analysis in Playground.</div>
+                ) : (
+                  <div className="dashboard-history-list">
+                    {analyses.slice(0, 5).map((analysis) => (
+                      <button key={analysis.id} type="button" onClick={() => void handleAnalysisDetail(analysis.id)}>
+                        <span className={`dashboard-verdict ${analysis.verdict.toLowerCase()}`}>{analysis.verdict}</span>
+                        <strong>{analysis.network}</strong>
+                        <span>{Math.round(analysis.confidence * 100)}% confidence</span>
+                        <time>{formatDate(analysis.createdAt)}</time>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {tab === 'projects' && (
+            <section className="dashboard-section">
+              <header className="dashboard-section-intro">
+                <p className="dashboard-eyebrow">Workspaces</p>
+                <h1>Projects &amp; environments</h1>
+                <p className="dashboard-lead">Group API keys and usage by project, then separate testnet from mainnet.</p>
+              </header>
+              <div className="dashboard-panel">
+                <div className="dashboard-panel-head"><h2>Create project</h2><p>Up to 10 per account.</p></div>
+                <form className="dashboard-key-form" onSubmit={handleCreateProject}>
+                  <label className="dashboard-field">
+                    <span>Project name</span>
+                    <input value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} placeholder="Payments API" required />
+                  </label>
+                  <button className="btn btn-primary" disabled={busy}>Create project</button>
+                </form>
+              </div>
+              <div className="dashboard-project-grid">
+                {projects.map((project) => {
+                  const projectKeys = keys.filter((key) => key.projectId === project.id);
+                  return (
+                    <article key={project.id} className="dashboard-panel dashboard-project-card">
+                      <div className="dashboard-project-head">
+                        <div><h2>{project.name}</h2>{project.isDefault && <span className="dashboard-provider-pill">Default</span>}</div>
+                        {!project.isDefault && <button className="btn-link danger" onClick={() => void handleDeleteProject(project.id)}>Delete</button>}
+                      </div>
+                      <div className="dashboard-project-environments">
+                        <span>Testnet <strong>{projectKeys.filter((key) => key.network === 'testnet').length} keys</strong></span>
+                        <span>Mainnet <strong>{projectKeys.filter((key) => key.network === 'mainnet').length} keys</strong></span>
+                      </div>
+                      <button className="btn btn-secondary compact" onClick={() => { setSelectedProjectId(project.id); setTab('api-keys'); }}>Create project key</button>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {tab === 'playground' && (
+            <section className="dashboard-section">
+              <header className="dashboard-section-intro">
+                <p className="dashboard-eyebrow">Analyze</p>
+                <h1>Playground</h1>
+                <p className="dashboard-lead">Simulate an XDR with your dashboard session—no API key paste required.</p>
+              </header>
+              <div className="dashboard-panel">
+                <form className="dashboard-stack-form" onSubmit={handlePlayground}>
+                  <div className="dashboard-form-row">
+                    <label className="dashboard-field"><span>Project</span><select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)}>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
+                    <label className="dashboard-field"><span>Network</span><select value={playgroundNetwork} onChange={(e) => setPlaygroundNetwork(e.target.value as 'testnet' | 'mainnet')}><option value="testnet">Testnet</option><option value="mainnet">Mainnet</option></select></label>
+                  </div>
+                  <label className="dashboard-field">
+                    <span>Transaction XDR</span>
+                    <textarea value={playgroundTx} onChange={(e) => setPlaygroundTx(e.target.value)} rows={9} placeholder="Paste base64 transaction XDR…" required />
+                  </label>
+                  <button className="btn btn-primary" disabled={busy || !selectedProjectId}>{busy ? 'Analyzing…' : 'Run analysis'}</button>
+                </form>
+              </div>
+              {playgroundResult && (
+                <div className="dashboard-panel dashboard-result">
+                  <div className="dashboard-result-head"><span className={`dashboard-verdict ${playgroundResult.verdict.toLowerCase()}`}>{playgroundResult.verdict}</span><strong>{Math.round(playgroundResult.confidence * 100)}% confidence</strong></div>
+                  <div className="dashboard-result-stats"><span>Blast radius <strong>{playgroundResult.gravity.blast_radius}</strong></span><span>Contracts <strong>{playgroundResult.field.contracts_mapped}</strong></span></div>
+                  <p>{playgroundResult.brief}</p>
+                </div>
+              )}
             </section>
           )}
 
           {tab === 'api-keys' && (
-            <section>
-              <h1>API keys</h1>
-              <p className="dashboard-lead">
-                Use keys with the MERIDIAN REST API. Pass as{' '}
-                <code>Authorization: Bearer &lt;key&gt;</code> or{' '}
-                <code>X-Api-Key: &lt;key&gt;</code>.
-              </p>
+            <section className="dashboard-section">
+              <header className="dashboard-section-intro">
+                <p className="dashboard-eyebrow">Credentials</p>
+                <h1>API keys</h1>
+                <p className="dashboard-lead">
+                  Pass as <code>Authorization: Bearer &lt;key&gt;</code> or{' '}
+                  <code>X-Api-Key: &lt;key&gt;</code>. Limit: 5 keys per account.
+                </p>
+              </header>
 
               {createdSecret && (
                 <div className="dashboard-secret-banner" role="status">
-                  <strong>Copy your new API key now</strong>
-                  <p>It won&apos;t be shown again.</p>
+                  <div className="dashboard-secret-banner-copy">
+                    <strong>Copy your new API key now</strong>
+                    <p>It won&apos;t be shown again. Store it in your secrets manager.</p>
+                  </div>
                   <code className="dashboard-secret-value">{createdSecret}</code>
+                  <CopyButton text={createdSecret} label="Copy key" />
+                </div>
+              )}
+
+              <div className="dashboard-panel">
+                <div className="dashboard-panel-head">
+                  <h2>Create key</h2>
+                  <p>Name keys by environment — e.g. Production, CI, Local.</p>
+                </div>
+                <form className="dashboard-key-form" onSubmit={handleCreateKey}>
+                  <label className="dashboard-field">
+                    <span>Key name</span>
+                    <input
+                      type="text"
+                      value={newKeyName}
+                      onChange={(e) => setNewKeyName(e.target.value)}
+                      placeholder="Production"
+                      disabled={busy || keys.length >= 5}
+                      required
+                    />
+                  </label>
+                  <label className="dashboard-field">
+                    <span>Project</span>
+                    <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)}>
+                      {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="dashboard-field">
+                    <span>Network</span>
+                    <select value={keyNetwork} onChange={(e) => setKeyNetwork(e.target.value as 'testnet' | 'mainnet')}>
+                      <option value="testnet">Testnet</option>
+                      <option value="mainnet">Mainnet</option>
+                    </select>
+                  </label>
                   <button
-                    type="button"
-                    className="btn btn-secondary compact"
-                    onClick={() => navigator.clipboard.writeText(createdSecret)}
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={busy || keys.length >= 5}
                   >
-                    Copy
+                    {busy ? 'Creating…' : 'Generate key'}
                   </button>
+                </form>
+                {keys.length >= 5 && (
+                  <p className="dashboard-hint">You&apos;ve reached the 5-key limit. Revoke one to create another.</p>
+                )}
+              </div>
+
+              <div className="dashboard-panel">
+                <div className="dashboard-panel-head">
+                  <h2>Your keys</h2>
+                  <p>{keys.length === 0 ? 'No keys yet.' : `${keys.length} active`}</p>
                 </div>
-              )}
 
-              <form className="dashboard-key-form" onSubmit={handleCreateKey}>
-                <input
-                  type="text"
-                  value={newKeyName}
-                  onChange={(e) => setNewKeyName(e.target.value)}
-                  placeholder="Key name"
-                  disabled={busy}
-                />
-                <button type="submit" className="btn btn-primary" disabled={busy}>
-                  {busy ? 'Creating…' : 'Generate key'}
-                </button>
-              </form>
-
-              {keys.length === 0 ? (
-                <p className="dashboard-empty">No API keys yet. Generate one to get started.</p>
-              ) : (
-                <div className="dashboard-table-wrap">
-                  <table className="dashboard-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Prefix</th>
-                        <th>Created</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {keys.map((key) => (
-                        <tr key={key.id}>
-                          <td>{key.name}</td>
-                          <td><code>{key.prefix}…</code></td>
-                          <td>{new Date(key.createdAt).toLocaleDateString()}</td>
-                          <td>
-                            <button
-                              type="button"
-                              className="btn-link danger"
-                              onClick={() => handleRevoke(key.id)}
-                              disabled={busy}
-                            >
-                              Revoke
-                            </button>
-                          </td>
+                {keys.length === 0 ? (
+                  <div className="dashboard-empty-state">
+                    <p>Generate a key to call the hosted analyze API.</p>
+                  </div>
+                ) : (
+                  <div className="dashboard-table-wrap">
+                    <table className="dashboard-table">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Project / network</th>
+                          <th>Prefix</th>
+                          <th>Created</th>
+                          <th>Last used</th>
+                          <th />
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                      </thead>
+                      <tbody>
+                        {keys.map((key) => (
+                          <tr key={key.id}>
+                            <td>
+                              <strong className="dashboard-key-name">{key.name}</strong>
+                            </td>
+                            <td>
+                              {projects.find((project) => project.id === key.projectId)?.name ?? 'Default'}
+                              {' · '}{key.network}
+                            </td>
+                            <td><code>{key.prefix}…</code></td>
+                            <td>{formatDate(key.createdAt)}</td>
+                            <td>{key.lastUsedAt ? formatDate(key.lastUsedAt) : '—'}</td>
+                            <td className="dashboard-table-actions">
+                              <button
+                                type="button"
+                                className="btn-link danger"
+                                onClick={() => handleRevoke(key.id)}
+                                disabled={busy}
+                              >
+                                Revoke
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </section>
           )}
 
           {tab === 'integrations' && (
-            <section>
-              <h1>Integrations</h1>
-              <p className="dashboard-lead">
-                Connect MERIDIAN to your stack — REST API, CLI, SDKs, and CI. Copy snippets below
-                and replace <code>&lt;your-api-key&gt;</code> with a key from the API keys tab.
-              </p>
+            <section className="dashboard-section">
+              <header className="dashboard-section-intro">
+                <p className="dashboard-eyebrow">Connect</p>
+                <h1>Integrations</h1>
+                <p className="dashboard-lead">
+                  Copy a snippet and replace <code>&lt;your-api-key&gt;</code> with a key from
+                  API keys.
+                </p>
+              </header>
               <div className="dashboard-integration-grid">
                 <IntegrationCard
                   title="REST API"
@@ -468,7 +784,7 @@ export function Dashboard() {
                   code={GITHUB_ACTION_SNIPPET}
                   links={[{ href: `${GITHUB_REPO}/tree/main/packages/meridian-action`, label: 'Action source' }]}
                 />
-                <article className="dashboard-integration-card">
+                <article className="dashboard-panel dashboard-integration-card">
                   <h3>Quick reference</h3>
                   <p>API base URL and repository links.</p>
                   <ul className="dashboard-quick-ref">
@@ -493,40 +809,66 @@ export function Dashboard() {
           )}
 
           {tab === 'usage' && (
-            <section>
-              <h1>Usage</h1>
-              <p className="dashboard-lead">
-                Request analytics will appear here as the hosted API rolls out to beta users.
-              </p>
+            <section className="dashboard-section">
+              <header className="dashboard-section-intro">
+                <p className="dashboard-eyebrow">Analytics</p>
+                <h1>Usage</h1>
+                <p className="dashboard-lead">
+                  Current-month activity and your early beta quota.
+                </p>
+              </header>
               <div className="dashboard-stat-grid">
-                <article className="dashboard-stat muted">
-                  <strong>—</strong>
-                  <span>Requests (30d)</span>
+                <article className="dashboard-stat">
+                  <span>Quota units</span>
+                  <strong>{usage?.totals.quotaUnits ?? 0}<small>/{usage?.quota.limit ?? 1000}</small></strong>
                 </article>
-                <article className="dashboard-stat muted">
-                  <strong>—</strong>
+                <article className="dashboard-stat">
                   <span>Analyze calls</span>
+                  <strong>{usage?.totals.analyzeCalls ?? 0}</strong>
                 </article>
-                <article className="dashboard-stat muted">
-                  <strong>—</strong>
+                <article className="dashboard-stat">
                   <span>Batch jobs</span>
+                  <strong>{usage?.totals.batchJobs ?? 0}</strong>
                 </article>
+              </div>
+              <div className="dashboard-panel">
+                <div className="dashboard-panel-head"><h2>Monthly quota</h2><p>Resets {usage ? formatDate(usage.quota.resetsAt) : 'next month'}.</p></div>
+                <div className="dashboard-quota-track"><span style={{ width: `${Math.min(100, ((usage?.quota.used ?? 0) / (usage?.quota.limit ?? 1000)) * 100)}%` }} /></div>
+              </div>
+              <div className="dashboard-panel">
+                <div className="dashboard-panel-head"><h2>Daily activity</h2><p>Quota units by day and network.</p></div>
+                {(usage?.byDay.length ?? 0) === 0 ? <div className="dashboard-empty-state">No usage yet.</div> : (
+                  <div className="dashboard-usage-chart">
+                    {usage!.byDay.map((day) => {
+                      const max = Math.max(...usage!.byDay.map((item) => item.quotaUnits), 1);
+                      return <div key={`${day.day}-${day.network}`} title={`${day.day}: ${day.quotaUnits}`}><span style={{ height: `${Math.max(8, (day.quotaUnits / max) * 100)}%` }} /><small>{day.day.slice(5)}</small></div>;
+                    })}
+                  </div>
+                )}
+              </div>
+              <div className="dashboard-panel">
+                <div className="dashboard-panel-head"><h2>Analysis history</h2><p>Latest 20 runs.</p></div>
+                <div className="dashboard-history-list">
+                  {analyses.map((analysis) => <button key={analysis.id} onClick={() => void handleAnalysisDetail(analysis.id)}><span className={`dashboard-verdict ${analysis.verdict.toLowerCase()}`}>{analysis.verdict}</span><strong>{analysis.network}</strong><span>Blast {analysis.blastRadius}</span><time>{formatDate(analysis.createdAt)}</time></button>)}
+                </div>
               </div>
             </section>
           )}
 
           {tab === 'webhooks' && (
-            <section>
-              <div className="dashboard-section-head">
+            <section className="dashboard-section">
+              <header className="dashboard-section-intro">
+                <div className="dashboard-section-head">
+                  <p className="dashboard-eyebrow">Notifications</p>
+                  <span className="dashboard-badge dashboard-badge-lg">Coming soon</span>
+                </div>
                 <h1>Webhooks</h1>
-                <span className="dashboard-badge dashboard-badge-lg">Coming soon</span>
-              </div>
-              <p className="dashboard-lead">
-                Push MERIDIAN verdicts to your stack — Slack, CI systems, treasury dashboards,
-                and internal monitors. Webhook delivery is not enabled for beta accounts yet.
-              </p>
+                <p className="dashboard-lead">
+                  Push MERIDIAN verdicts to Slack, CI, treasury dashboards, and internal monitors.
+                </p>
+              </header>
 
-              <div className="dashboard-coming-soon-panel">
+              <div className="dashboard-panel dashboard-coming-soon-panel">
                 <h2>Planned events</h2>
                 <ul className="dashboard-event-list">
                   <li><code>analysis.completed</code> — verdict, confidence, blast radius</li>
@@ -551,18 +893,21 @@ export function Dashboard() {
           )}
 
           {tab === 'account' && (
-            <section>
-              <h1>Account</h1>
-              <p className="dashboard-lead">
-                Manage your profile, password, and connected sign-in methods.
-              </p>
+            <section className="dashboard-section">
+              <header className="dashboard-section-intro">
+                <p className="dashboard-eyebrow">Settings</p>
+                <h1>Account</h1>
+                <p className="dashboard-lead">
+                  Manage your profile, password, and connected sign-in methods.
+                </p>
+              </header>
 
               {accountMessage && (
                 <p className="dashboard-success" role="status">{accountMessage}</p>
               )}
 
               <div className="dashboard-account-grid">
-                <article className="dashboard-account-card">
+                <article className="dashboard-panel dashboard-account-card">
                   <h2>Profile</h2>
                   <dl className="dashboard-account-meta">
                     <div>
@@ -580,31 +925,34 @@ export function Dashboard() {
                       </dd>
                     </div>
                   </dl>
-                  <form className="dashboard-key-form" onSubmit={handleUpdateName}>
-                    <input
-                      type="text"
-                      value={accountName}
-                      onChange={(e) => setAccountName(e.target.value)}
-                      placeholder="Display name"
-                      disabled={busy}
-                    />
+                  <form className="dashboard-stack-form" onSubmit={handleUpdateName}>
+                    <label className="dashboard-field">
+                      <span>Display name</span>
+                      <input
+                        type="text"
+                        value={accountName}
+                        onChange={(e) => setAccountName(e.target.value)}
+                        placeholder="Display name"
+                        disabled={busy}
+                      />
+                    </label>
                     <button type="submit" className="btn btn-primary" disabled={busy}>
                       Save name
                     </button>
                   </form>
                 </article>
 
-                <article className="dashboard-account-card">
+                <article className="dashboard-panel dashboard-account-card">
                   <h2>{user?.hasPassword ? 'Change password' : 'Set a password'}</h2>
                   <p>
                     {user?.hasPassword
                       ? 'Update the password used for email sign-in.'
-                      : 'You signed in with GitHub. Optionally set a password so you can also use email login.'}
+                      : 'You signed in with GitHub. Optionally set a password for email login.'}
                   </p>
-                  <form className="auth-form" onSubmit={handleUpdatePassword}>
+                  <form className="dashboard-stack-form" onSubmit={handleUpdatePassword}>
                     {user?.hasPassword && (
-                      <label>
-                        Current password
+                      <label className="dashboard-field">
+                        <span>Current password</span>
                         <input
                           type="password"
                           value={currentPassword}
@@ -615,8 +963,8 @@ export function Dashboard() {
                         />
                       </label>
                     )}
-                    <label>
-                      New password
+                    <label className="dashboard-field">
+                      <span>New password</span>
                       <input
                         type="password"
                         value={newPassword}
@@ -633,12 +981,12 @@ export function Dashboard() {
                   </form>
                 </article>
 
-                <article className="dashboard-account-card">
+                <article className="dashboard-panel dashboard-account-card">
                   <h2>GitHub</h2>
                   {user?.githubId ? (
                     <p>
-                      Connected as GitHub user <code>{user.githubId}</code>.
-                      You can continue signing in with GitHub.
+                      Connected as GitHub user <code>{user.githubId}</code>. You can continue
+                      signing in with GitHub.
                     </p>
                   ) : githubOAuthEnabled ? (
                     <>
@@ -649,14 +997,34 @@ export function Dashboard() {
                     </>
                   ) : (
                     <p>
-                      GitHub OAuth is not configured on the API yet. Ask your admin to set
-                      <code> GITHUB_CLIENT_ID</code>, <code>GITHUB_CLIENT_SECRET</code>, and
-                      <code> GITHUB_REDIRECT_URI</code>.
+                      GitHub OAuth is not configured on the API yet. Set{' '}
+                      <code>GITHUB_CLIENT_ID</code>, <code>GITHUB_CLIENT_SECRET</code>, and{' '}
+                      <code>GITHUB_REDIRECT_URI</code> on the backend.
                     </p>
                   )}
                 </article>
               </div>
             </section>
+          )}
+          {selectedAnalysis && (
+            <div className="dashboard-detail-backdrop" role="presentation" onClick={() => setSelectedAnalysis(null)}>
+              <aside className="dashboard-detail" role="dialog" aria-modal="true" aria-label="Analysis detail" onClick={(event) => event.stopPropagation()}>
+                <div className="dashboard-detail-head">
+                  <span className={`dashboard-verdict ${selectedAnalysis.verdict.toLowerCase()}`}>{selectedAnalysis.verdict}</span>
+                  <button className="btn-link" onClick={() => setSelectedAnalysis(null)}>Close</button>
+                </div>
+                <h2>Analysis detail</h2>
+                <dl className="dashboard-detail-grid">
+                  <div><dt>Network</dt><dd>{selectedAnalysis.network}</dd></div>
+                  <div><dt>Confidence</dt><dd>{Math.round(selectedAnalysis.confidence * 100)}%</dd></div>
+                  <div><dt>Blast radius</dt><dd>{selectedAnalysis.blastRadius}</dd></div>
+                  <div><dt>Contracts</dt><dd>{selectedAnalysis.contractsMapped}</dd></div>
+                </dl>
+                <h3>Brief</h3>
+                <p>{selectedAnalysis.brief || 'No brief stored.'}</p>
+                {selectedAnalysis.topRisks.length > 0 && <><h3>Top risks</h3><ul>{selectedAnalysis.topRisks.map((risk, index) => <li key={risk.id ?? index}>{risk.title ?? risk.description ?? risk.severity ?? 'Risk detected'}</li>)}</ul></>}
+              </aside>
+            </div>
           )}
         </main>
       </div>

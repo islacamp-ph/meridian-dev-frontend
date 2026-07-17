@@ -13,10 +13,57 @@ export interface User {
 
 export interface ApiKeySummary {
   id: string;
+  projectId?: string;
+  network: 'testnet' | 'mainnet';
   name: string;
   prefix: string;
   createdAt: string;
   lastUsedAt?: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export interface UsageDay {
+  day: string;
+  network: 'testnet' | 'mainnet';
+  analyzeCalls: number;
+  batchJobs: number;
+  batchItems: number;
+  quotaUnits: number;
+}
+
+export interface UsageSummary {
+  totals: { analyzeCalls: number; batchJobs: number; batchItems: number; quotaUnits: number };
+  byDay: UsageDay[];
+  quota: { used: number; limit: number; resetsAt: string };
+}
+
+export interface AnalysisSummary {
+  id: string;
+  projectId: string;
+  apiKeyId?: string;
+  network: 'testnet' | 'mainnet';
+  verdict: 'CLEAR' | 'WARN' | 'ABORT';
+  confidence: number;
+  blastRadius: number;
+  contractsMapped: number;
+  brief: string;
+  topRisks: Array<{ id?: string; severity?: string; title?: string; description?: string }>;
+  createdAt: string;
+}
+
+export interface DashboardAnalyzeResult {
+  verdict: 'CLEAR' | 'WARN' | 'ABORT';
+  confidence: number;
+  brief: string;
+  top_risks: AnalysisSummary['topRisks'];
+  gravity: { blast_radius: number; recovery?: string };
+  field: { contracts_mapped: number };
 }
 
 export interface AuthProviders {
@@ -128,18 +175,85 @@ export async function listApiKeys(): Promise<ApiKeySummary[]> {
   return data.keys;
 }
 
-export async function createApiKey(name: string): Promise<ApiKeySummary & { secret: string }> {
+export async function createApiKey(
+  name: string,
+  projectId?: string,
+  network: 'testnet' | 'mainnet' = 'testnet',
+): Promise<ApiKeySummary & { secret: string }> {
   const response = await fetch(apiUrl('/api/keys'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, projectId, network }),
   });
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.error ?? 'Failed to create API key');
   }
   return data.key;
+}
+
+async function siteRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(apiUrl(path), {
+    ...init,
+    credentials: 'include',
+    headers: init?.body
+      ? { 'Content-Type': 'application/json', ...init.headers }
+      : init?.headers,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error ?? 'Request failed');
+  return data as T;
+}
+
+export async function listProjects(): Promise<Project[]> {
+  return (await siteRequest<{ projects: Project[] }>('/api/projects')).projects;
+}
+
+export async function createProject(name: string): Promise<Project> {
+  return (await siteRequest<{ project: Project }>('/api/projects', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  })).project;
+}
+
+export async function renameProject(id: string, name: string): Promise<Project> {
+  return (await siteRequest<{ project: Project }>(`/api/projects/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  })).project;
+}
+
+export async function removeProject(id: string): Promise<void> {
+  await siteRequest(`/api/projects/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export async function fetchUsage(projectId?: string): Promise<UsageSummary> {
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  return siteRequest<UsageSummary>(`/api/usage${query}`);
+}
+
+export async function listAnalyses(projectId?: string, limit = 20): Promise<AnalysisSummary[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (projectId) params.set('projectId', projectId);
+  return (await siteRequest<{ analyses: AnalysisSummary[] }>(`/api/analyses?${params}`)).analyses;
+}
+
+export async function getAnalysis(id: string): Promise<AnalysisSummary> {
+  return (await siteRequest<{ analysis: AnalysisSummary }>(
+    `/api/analyses/${encodeURIComponent(id)}`,
+  )).analysis;
+}
+
+export async function runDashboardAnalysis(input: {
+  projectId: string;
+  tx: string;
+  network: 'testnet' | 'mainnet';
+}): Promise<DashboardAnalyzeResult> {
+  return siteRequest<DashboardAnalyzeResult>('/api/playground/analyze', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 }
 
 export async function revokeApiKey(id: string): Promise<void> {
