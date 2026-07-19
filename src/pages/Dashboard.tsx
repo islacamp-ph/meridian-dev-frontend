@@ -4,6 +4,8 @@ import {
   changePassword,
   createApiKey,
   createProject,
+  createWebhook,
+  deleteWebhook,
   fetchUsage,
   fetchSession,
   getAnalysis,
@@ -11,6 +13,7 @@ import {
   listAnalyses,
   listApiKeys,
   listProjects,
+  listWebhooks,
   logout,
   removeProject,
   runDashboardAnalysis,
@@ -22,6 +25,7 @@ import {
   type Project,
   type UsageSummary,
   type User,
+  type WebhookSummary,
 } from '../lib/api';
 import {
   DOCS_URL,
@@ -48,7 +52,7 @@ const NAV_ITEMS: Array<{
   { id: 'playground', label: 'Playground' },
   { id: 'integrations', label: 'Integrations' },
   { id: 'usage', label: 'Usage' },
-  { id: 'webhooks', label: 'Webhooks', badge: 'Soon' },
+  { id: 'webhooks', label: 'Webhooks' },
   { id: 'account', label: 'Account' },
 ];
 
@@ -197,6 +201,9 @@ export function Dashboard() {
   const [playgroundTx, setPlaygroundTx] = useState('');
   const [playgroundNetwork, setPlaygroundNetwork] = useState<'testnet' | 'mainnet'>('testnet');
   const [playgroundResult, setPlaygroundResult] = useState<DashboardAnalyzeResult | null>(null);
+  const [webhooks, setWebhooks] = useState<WebhookSummary[]>([]);
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [createdWebhookSecret, setCreatedWebhookSecret] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -209,17 +216,19 @@ export function Dashboard() {
       setAccountName(session.user.name ?? '');
       setGithubOAuthEnabled(Boolean(session.githubOAuthEnabled));
       try {
-        const [apiKeys, projectList, usageData, recent] = await Promise.all([
+        const [apiKeys, projectList, usageData, recent, hookList] = await Promise.all([
           listApiKeys(),
           listProjects(),
           fetchUsage(),
           listAnalyses(undefined, 20),
+          listWebhooks().catch(() => [] as WebhookSummary[]),
         ]);
         setKeys(apiKeys);
         setProjects(projectList);
         setSelectedProjectId(projectList.find((project) => project.isDefault)?.id ?? projectList[0]?.id ?? '');
         setUsage(usageData);
         setAnalyses(recent);
+        setWebhooks(hookList);
       } catch {
         setKeys([]);
       }
@@ -325,6 +334,40 @@ export function Dashboard() {
       if (createdSecret) setCreatedSecret(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to revoke key');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCreateWebhook(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    setCreatedWebhookSecret(null);
+    try {
+      const webhook = await createWebhook({
+        projectId: selectedProjectId || undefined,
+        url: webhookUrl.trim(),
+        events: ['analysis.completed', 'analysis.abort'],
+      });
+      setCreatedWebhookSecret(webhook.secret ?? null);
+      setWebhookUrl('');
+      setWebhooks(await listWebhooks(selectedProjectId || undefined));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create webhook');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteWebhook(id: string) {
+    if (!confirm('Delete this webhook?')) return;
+    setBusy(true);
+    try {
+      await deleteWebhook(id);
+      setWebhooks(await listWebhooks(selectedProjectId || undefined));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete webhook');
     } finally {
       setBusy(false);
     }
@@ -858,36 +901,62 @@ export function Dashboard() {
           {tab === 'webhooks' && (
             <section className="dashboard-section">
               <header className="dashboard-section-intro">
-                <div className="dashboard-section-head">
-                  <p className="dashboard-eyebrow">Notifications</p>
-                  <span className="dashboard-badge dashboard-badge-lg">Coming soon</span>
-                </div>
+                <p className="dashboard-eyebrow">Notifications</p>
                 <h1>Webhooks</h1>
                 <p className="dashboard-lead">
-                  Push MERIDIAN verdicts to Slack, CI, treasury dashboards, and internal monitors.
+                  Receive signed POSTs when analyses complete or abort. Verify with{' '}
+                  <code>X-Meridian-Signature</code> (HMAC-SHA256).
                 </p>
               </header>
 
-              <div className="dashboard-panel dashboard-coming-soon-panel">
-                <h2>Planned events</h2>
-                <ul className="dashboard-event-list">
-                  <li><code>analysis.completed</code> — verdict, confidence, blast radius</li>
-                  <li><code>analysis.failed</code> — simulation or pipeline errors</li>
-                  <li><code>batch.completed</code> — CI batch summary</li>
-                  <li><code>risk.elevated</code> — WARN or ABORT on monitored patterns</li>
-                </ul>
+              <form className="dashboard-panel" onSubmit={handleCreateWebhook}>
+                <h2>Add endpoint</h2>
+                <label>
+                  URL
+                  <input
+                    type="url"
+                    value={webhookUrl}
+                    onChange={(e) => setWebhookUrl(e.target.value)}
+                    placeholder="https://example.com/hooks/meridian"
+                    required
+                    disabled={busy}
+                  />
+                </label>
+                <button type="submit" className="btn btn-primary" disabled={busy || !webhookUrl.trim()}>
+                  {busy ? 'Saving…' : 'Create webhook'}
+                </button>
+                {createdWebhookSecret && (
+                  <p className="dashboard-secret-banner" role="status">
+                    Signing secret (copy now): <code>{createdWebhookSecret}</code>
+                  </p>
+                )}
+              </form>
 
+              <div className="dashboard-panel">
+                <h2>Endpoints</h2>
+                {webhooks.length === 0 ? (
+                  <p className="dashboard-lead">No webhooks yet.</p>
+                ) : (
+                  <ul className="dashboard-event-list">
+                    {webhooks.map((hook) => (
+                      <li key={hook.id}>
+                        <code>{hook.url}</code>
+                        <span>{hook.active ? 'active' : 'paused'}</span>
+                        <span>{hook.events.join(', ')}</span>
+                        <button
+                          type="button"
+                          className="btn btn-secondary compact"
+                          onClick={() => void handleDeleteWebhook(hook.id)}
+                          disabled={busy}
+                        >
+                          Delete
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <h2>Example payload</h2>
-                <div className="dashboard-code-toolbar">
-                  <CopyButton text={WEBHOOK_PAYLOAD_EXAMPLE} />
-                </div>
                 <pre className="dashboard-code-block"><code>{WEBHOOK_PAYLOAD_EXAMPLE}</code></pre>
-
-                <p className="dashboard-coming-soon-note">
-                  Want early access?{' '}
-                  <a href={DOCS_URL}>Join the docs waitlist</a> — we&apos;ll notify beta users when
-                  webhooks ship.
-                </p>
               </div>
             </section>
           )}

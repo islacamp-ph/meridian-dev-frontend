@@ -71,6 +71,26 @@ export interface AuthProviders {
   github: boolean;
 }
 
+function apiUnreachableMessage(status?: number): string {
+  if (status === 503) {
+    return 'API not ready (auth/storage). Start the backend with npm run docker:up && npm run docker:wait, or set AUTH_SECRET and DATABASE_URL.';
+  }
+  return 'API unreachable (Bad gateway). For local dev: leave VITE_API_URL unset, run the backend on :3080 (npm run docker:up && npm run docker:wait), or set VITE_DEV_API_PROXY.';
+}
+
+async function readJsonBody(response: Response): Promise<Record<string, unknown>> {
+  return (await response.json().catch(() => ({}))) as Record<string, unknown>;
+}
+
+function errorFromResponse(data: Record<string, unknown>, fallback: string, status: number): Error {
+  if (status === 502 || status === 503 || status === 504) {
+    const detail = typeof data.details === 'string' ? ` ${data.details}` : '';
+    return new Error(`${apiUnreachableMessage(status)}${detail}`);
+  }
+  const msg = typeof data.error === 'string' ? data.error : fallback;
+  return new Error(msg);
+}
+
 export async function fetchProviders(): Promise<AuthProviders> {
   try {
     const response = await fetch(apiUrl('/api/auth/providers'), { credentials: 'include' });
@@ -92,25 +112,34 @@ export async function fetchSession(): Promise<{
   user?: User;
   githubOAuthEnabled?: boolean;
 }> {
-  const response = await fetch(apiUrl('/api/auth/session'), { credentials: 'include' });
-  if (!response.ok) {
+  try {
+    const response = await fetch(apiUrl('/api/auth/session'), { credentials: 'include' });
+    if (!response.ok) {
+      return { authenticated: false };
+    }
+    return response.json();
+  } catch {
     return { authenticated: false };
   }
-  return response.json();
 }
 
 export async function login(email: string, password: string): Promise<User> {
-  const response = await fetch(apiUrl('/api/auth/login'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ email, password }),
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error ?? 'Login failed');
+  let response: Response;
+  try {
+    response = await fetch(apiUrl('/api/auth/login'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password }),
+    });
+  } catch {
+    throw new Error(apiUnreachableMessage());
   }
-  return data.user;
+  const data = await readJsonBody(response);
+  if (!response.ok) {
+    throw errorFromResponse(data, 'Login failed', response.status);
+  }
+  return data.user as User;
 }
 
 export async function register(
@@ -118,17 +147,22 @@ export async function register(
   password: string,
   name?: string,
 ): Promise<User> {
-  const response = await fetch(apiUrl('/api/auth/register'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ email, password, name }),
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error ?? 'Registration failed');
+  let response: Response;
+  try {
+    response = await fetch(apiUrl('/api/auth/register'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password, name }),
+    });
+  } catch {
+    throw new Error(apiUnreachableMessage());
   }
-  return data.user;
+  const data = await readJsonBody(response);
+  if (!response.ok) {
+    throw errorFromResponse(data, 'Registration failed', response.status);
+  }
+  return data.user as User;
 }
 
 export async function logout(): Promise<void> {
@@ -233,9 +267,16 @@ export async function fetchUsage(projectId?: string): Promise<UsageSummary> {
   return siteRequest<UsageSummary>(`/api/usage${query}`);
 }
 
-export async function listAnalyses(projectId?: string, limit = 20): Promise<AnalysisSummary[]> {
+export async function listAnalyses(
+  projectId?: string,
+  limit = 20,
+  filters?: { page?: number; verdict?: string; network?: string },
+): Promise<AnalysisSummary[]> {
   const params = new URLSearchParams({ limit: String(limit) });
   if (projectId) params.set('projectId', projectId);
+  if (filters?.page) params.set('page', String(filters.page));
+  if (filters?.verdict) params.set('verdict', filters.verdict);
+  if (filters?.network) params.set('network', filters.network);
   return (await siteRequest<{ analyses: AnalysisSummary[] }>(`/api/analyses?${params}`)).analyses;
 }
 
@@ -256,13 +297,60 @@ export async function runDashboardAnalysis(input: {
   });
 }
 
+export interface WebhookSummary {
+  id: string;
+  projectId: string;
+  url: string;
+  events: string[];
+  active: boolean;
+  createdAt: string;
+  secret?: string;
+}
+
+export async function listWebhooks(projectId?: string): Promise<WebhookSummary[]> {
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  return (await siteRequest<{ webhooks: WebhookSummary[] }>(`/api/webhooks${query}`)).webhooks;
+}
+
+export async function createWebhook(input: {
+  projectId?: string;
+  url: string;
+  events?: string[];
+}): Promise<WebhookSummary> {
+  return (await siteRequest<{ webhook: WebhookSummary }>('/api/webhooks', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })).webhook;
+}
+
+export async function updateWebhook(
+  id: string,
+  input: { url?: string; events?: string[]; active?: boolean },
+): Promise<WebhookSummary> {
+  return (await siteRequest<{ webhook: WebhookSummary }>(
+    `/api/webhooks/${encodeURIComponent(id)}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  )).webhook;
+}
+
+export async function deleteWebhook(id: string): Promise<void> {
+  await siteRequest(`/api/webhooks/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export async function rotateApiKey(id: string): Promise<ApiKeySummary & { secret: string }> {
+  return (await siteRequest<{ key: ApiKeySummary & { secret: string } }>(
+    `/api/keys/${encodeURIComponent(id)}/rotate`,
+    { method: 'POST' },
+  )).key;
+}
+
 export async function revokeApiKey(id: string): Promise<void> {
   const response = await fetch(apiUrl(`/api/keys/revoke?id=${encodeURIComponent(id)}`), {
     method: 'DELETE',
     credentials: 'include',
   });
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error ?? 'Failed to revoke API key');
+    throw new Error((data as { error?: string }).error ?? 'Failed to revoke API key');
   }
 }

@@ -1,4 +1,4 @@
-export const GITHUB_REPO = 'https://github.com/islacamp-ph/meridian-core';
+export const GITHUB_REPO = 'https://github.com/islacamp-ph/meridian-dev-backend';
 
 export const GITHUB_README = `${GITHUB_REPO}#readme`;
 export const GITHUB_DOCS_SRC = `${GITHUB_REPO}/tree/main/apps/docs`;
