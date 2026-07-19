@@ -48,7 +48,7 @@ result = client.analyze({"tx": "<xdr>", "network": "testnet"})`,
     name: 'GitHub Action',
     package: 'meridian-action',
     href: GITHUB_ACTION,
-    example: `- uses: islacamp-ph/meridian-core/packages/meridian-action@main
+    example: `- uses: islacamp-ph/meridian-dev-backend/packages/meridian-action@v1
   with:
     tx-file: tx.xdr
     network: testnet

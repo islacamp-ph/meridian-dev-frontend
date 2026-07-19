@@ -13,9 +13,12 @@ import {
   listAnalyses,
   listApiKeys,
   listProjects,
+  listWebhookDeliveries,
   listWebhooks,
   logout,
   removeProject,
+  retryWebhookDelivery,
+  rotateApiKey,
   runDashboardAnalysis,
   revokeApiKey,
   updateAccount,
@@ -25,10 +28,13 @@ import {
   type Project,
   type UsageSummary,
   type User,
+  type WebhookDelivery,
   type WebhookSummary,
 } from '../lib/api';
 import {
   DOCS_URL,
+  GITHUB_ACTION,
+  GITHUB_ACTION_USES,
   GITHUB_REPO,
   INSTALL_CLI,
   NPM_CLI,
@@ -83,7 +89,7 @@ client = MeridianClient(
 result = client.analyze(tx="<base64-xdr>", network="testnet")`;
 
 const GITHUB_ACTION_SNIPPET = `- name: MERIDIAN pre-execution check
-  uses: ./packages/meridian-action
+  uses: islacamp-ph/meridian-dev-backend/packages/meridian-action@v1
   with:
     tx-file: tx.xdr
     network: testnet
@@ -184,10 +190,15 @@ export function Dashboard() {
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [analyses, setAnalyses] = useState<AnalysisSummary[]>([]);
+  const [analysesTotal, setAnalysesTotal] = useState(0);
+  const [analysesPage, setAnalysesPage] = useState(1);
+  const [analysisVerdict, setAnalysisVerdict] = useState<'all' | 'CLEAR' | 'WARN' | 'ABORT'>('all');
+  const [analysisNetwork, setAnalysisNetwork] = useState<'all' | 'testnet' | 'mainnet'>('all');
   const [selectedAnalysis, setSelectedAnalysis] = useState<AnalysisSummary | null>(null);
   const [tab, setTab] = useState<DashboardTab>('overview');
   const [loading, setLoading] = useState(true);
   const [newKeyName, setNewKeyName] = useState('Production');
+  const [keyScope, setKeyScope] = useState<'analyze' | 'admin'>('analyze');
   const [createdSecret, setCreatedSecret] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -202,8 +213,20 @@ export function Dashboard() {
   const [playgroundNetwork, setPlaygroundNetwork] = useState<'testnet' | 'mainnet'>('testnet');
   const [playgroundResult, setPlaygroundResult] = useState<DashboardAnalyzeResult | null>(null);
   const [webhooks, setWebhooks] = useState<WebhookSummary[]>([]);
+  const [webhookDeliveries, setWebhookDeliveries] = useState<WebhookDelivery[]>([]);
   const [webhookUrl, setWebhookUrl] = useState('');
   const [createdWebhookSecret, setCreatedWebhookSecret] = useState<string | null>(null);
+
+  async function refreshAnalyses(page = analysesPage) {
+    const result = await listAnalyses(undefined, 20, {
+      page,
+      verdict: analysisVerdict === 'all' ? undefined : analysisVerdict,
+      network: analysisNetwork === 'all' ? undefined : analysisNetwork,
+    });
+    setAnalyses(result.analyses);
+    setAnalysesTotal(result.total);
+    setAnalysesPage(result.page);
+  }
 
   useEffect(() => {
     async function load() {
@@ -216,19 +239,23 @@ export function Dashboard() {
       setAccountName(session.user.name ?? '');
       setGithubOAuthEnabled(Boolean(session.githubOAuthEnabled));
       try {
-        const [apiKeys, projectList, usageData, recent, hookList] = await Promise.all([
+        const [apiKeys, projectList, usageData, recent, hookList, deliveries] = await Promise.all([
           listApiKeys(),
           listProjects(),
           fetchUsage(),
           listAnalyses(undefined, 20),
           listWebhooks().catch(() => [] as WebhookSummary[]),
+          listWebhookDeliveries().catch(() => [] as WebhookDelivery[]),
         ]);
         setKeys(apiKeys);
         setProjects(projectList);
         setSelectedProjectId(projectList.find((project) => project.isDefault)?.id ?? projectList[0]?.id ?? '');
         setUsage(usageData);
-        setAnalyses(recent);
+        setAnalyses(recent.analyses);
+        setAnalysesTotal(recent.total);
+        setAnalysesPage(recent.page);
         setWebhooks(hookList);
+        setWebhookDeliveries(deliveries);
       } catch {
         setKeys([]);
       }
@@ -242,6 +269,12 @@ export function Dashboard() {
     setAccountMessage('');
   }, [tab]);
 
+  useEffect(() => {
+    if (loading) return;
+    void refreshAnalyses(1).catch(() => setAnalyses([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysisVerdict, analysisNetwork]);
+
   async function handleLogout() {
     await logout();
     window.location.href = '/';
@@ -252,7 +285,7 @@ export function Dashboard() {
     setError('');
     setBusy(true);
     try {
-      const key = await createApiKey(newKeyName, selectedProjectId, keyNetwork);
+      const key = await createApiKey(newKeyName, selectedProjectId, keyNetwork, keyScope);
       setCreatedSecret(key.secret);
       setKeys(await listApiKeys());
       setNewKeyName('Production');
@@ -306,9 +339,14 @@ export function Dashboard() {
         network: playgroundNetwork,
       });
       setPlaygroundResult(result);
-      const [nextUsage, recent] = await Promise.all([fetchUsage(), listAnalyses(undefined, 20)]);
+      const [nextUsage, recent] = await Promise.all([fetchUsage(), listAnalyses(undefined, 20, {
+        page: analysesPage,
+        verdict: analysisVerdict === 'all' ? undefined : analysisVerdict,
+        network: analysisNetwork === 'all' ? undefined : analysisNetwork,
+      })]);
       setUsage(nextUsage);
-      setAnalyses(recent);
+      setAnalyses(recent.analyses);
+      setAnalysesTotal(recent.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analysis failed');
     } finally {
@@ -321,6 +359,21 @@ export function Dashboard() {
       setSelectedAnalysis(await getAnalysis(id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analysis');
+    }
+  }
+
+  async function handleRotateKey(id: string) {
+    if (!confirm('Rotate this key? The old secret stops working immediately.')) return;
+    setBusy(true);
+    setError('');
+    try {
+      const key = await rotateApiKey(id);
+      setCreatedSecret(key.secret);
+      setKeys(await listApiKeys());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to rotate key');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -353,8 +406,22 @@ export function Dashboard() {
       setCreatedWebhookSecret(webhook.secret ?? null);
       setWebhookUrl('');
       setWebhooks(await listWebhooks(selectedProjectId || undefined));
+      setWebhookDeliveries(await listWebhookDeliveries());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create webhook');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRetryDelivery(id: string) {
+    setBusy(true);
+    setError('');
+    try {
+      await retryWebhookDelivery(id);
+      setWebhookDeliveries(await listWebhookDeliveries());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Retry failed');
     } finally {
       setBusy(false);
     }
@@ -366,6 +433,7 @@ export function Dashboard() {
     try {
       await deleteWebhook(id);
       setWebhooks(await listWebhooks(selectedProjectId || undefined));
+      setWebhookDeliveries(await listWebhookDeliveries());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete webhook');
     } finally {
@@ -714,6 +782,13 @@ export function Dashboard() {
                       <option value="mainnet">Mainnet</option>
                     </select>
                   </label>
+                  <label className="dashboard-field">
+                    <span>Scope</span>
+                    <select value={keyScope} onChange={(e) => setKeyScope(e.target.value as 'analyze' | 'admin')}>
+                      <option value="analyze">analyze — /v1 analyze only</option>
+                      <option value="admin">admin — full API access</option>
+                    </select>
+                  </label>
                   <button
                     type="submit"
                     className="btn btn-primary"
@@ -744,6 +819,7 @@ export function Dashboard() {
                         <tr>
                           <th>Name</th>
                           <th>Project / network</th>
+                          <th>Scope</th>
                           <th>Prefix</th>
                           <th>Created</th>
                           <th>Last used</th>
@@ -760,10 +836,19 @@ export function Dashboard() {
                               {projects.find((project) => project.id === key.projectId)?.name ?? 'Default'}
                               {' · '}{key.network}
                             </td>
+                            <td><code>{key.scope ?? 'analyze'}</code></td>
                             <td><code>{key.prefix}…</code></td>
                             <td>{formatDate(key.createdAt)}</td>
                             <td>{key.lastUsedAt ? formatDate(key.lastUsedAt) : '—'}</td>
                             <td className="dashboard-table-actions">
+                              <button
+                                type="button"
+                                className="btn-link"
+                                onClick={() => void handleRotateKey(key.id)}
+                                disabled={busy}
+                              >
+                                Rotate
+                              </button>
                               <button
                                 type="button"
                                 className="btn-link danger"
@@ -825,7 +910,7 @@ export function Dashboard() {
                   title="GitHub Action"
                   description="Fail CI on WARN or ABORT before a Soroban transaction ships."
                   code={GITHUB_ACTION_SNIPPET}
-                  links={[{ href: `${GITHUB_REPO}/tree/main/packages/meridian-action`, label: 'Action source' }]}
+                  links={[{ href: GITHUB_ACTION_USES.startsWith('http') ? GITHUB_ACTION : `${GITHUB_REPO}/tree/main/packages/meridian-action`, label: 'Action @v1' }]}
                 />
                 <article className="dashboard-panel dashboard-integration-card">
                   <h3>Quick reference</h3>
@@ -890,10 +975,75 @@ export function Dashboard() {
                 )}
               </div>
               <div className="dashboard-panel">
-                <div className="dashboard-panel-head"><h2>Analysis history</h2><p>Latest 20 runs.</p></div>
-                <div className="dashboard-history-list">
-                  {analyses.map((analysis) => <button key={analysis.id} onClick={() => void handleAnalysisDetail(analysis.id)}><span className={`dashboard-verdict ${analysis.verdict.toLowerCase()}`}>{analysis.verdict}</span><strong>{analysis.network}</strong><span>Blast {analysis.blastRadius}</span><time>{formatDate(analysis.createdAt)}</time></button>)}
+                <div className="dashboard-panel-head">
+                  <h2>Analysis history</h2>
+                  <p>{analysesTotal} matching runs.</p>
                 </div>
+                <div className="dashboard-key-form" style={{ marginBottom: '1rem' }}>
+                  <label className="dashboard-field">
+                    <span>Verdict</span>
+                    <select
+                      value={analysisVerdict}
+                      onChange={(e) => setAnalysisVerdict(e.target.value as typeof analysisVerdict)}
+                    >
+                      <option value="all">All</option>
+                      <option value="CLEAR">CLEAR</option>
+                      <option value="WARN">WARN</option>
+                      <option value="ABORT">ABORT</option>
+                    </select>
+                  </label>
+                  <label className="dashboard-field">
+                    <span>Network</span>
+                    <select
+                      value={analysisNetwork}
+                      onChange={(e) => setAnalysisNetwork(e.target.value as typeof analysisNetwork)}
+                    >
+                      <option value="all">All</option>
+                      <option value="testnet">Testnet</option>
+                      <option value="mainnet">Mainnet</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="dashboard-history-list">
+                  {analyses.length === 0 ? (
+                    <div className="dashboard-empty-state">No analyses match these filters.</div>
+                  ) : (
+                    analyses.map((analysis) => (
+                      <button key={analysis.id} type="button" onClick={() => void handleAnalysisDetail(analysis.id)}>
+                        <span className={`dashboard-verdict ${analysis.verdict.toLowerCase()}`}>{analysis.verdict}</span>
+                        <strong>{analysis.network}</strong>
+                        <span>Blast {analysis.blastRadius}</span>
+                        <time>{formatDate(analysis.createdAt)}</time>
+                      </button>
+                    ))
+                  )}
+                </div>
+                {analysesTotal > 20 && (
+                  <div className="dashboard-table-actions" style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary compact"
+                      disabled={busy || analysesPage <= 1}
+                      onClick={() => void refreshAnalyses(analysesPage - 1)}
+                    >
+                      Previous
+                    </button>
+                    <span>Page {analysesPage} of {Math.max(1, Math.ceil(analysesTotal / 20))}</span>
+                    <button
+                      type="button"
+                      className="btn btn-secondary compact"
+                      disabled={busy || analysesPage * 20 >= analysesTotal}
+                      onClick={() => void refreshAnalyses(analysesPage + 1)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+                {selectedAnalysis && (
+                  <p className="dashboard-lead" style={{ marginTop: '1rem' }}>
+                    Selected: <strong>{selectedAnalysis.verdict}</strong> — {selectedAnalysis.brief || 'No brief'}
+                  </p>
+                )}
               </div>
             </section>
           )}
@@ -954,6 +1104,55 @@ export function Dashboard() {
                       </li>
                     ))}
                   </ul>
+                )}
+              </div>
+
+              <div className="dashboard-panel">
+                <div className="dashboard-panel-head">
+                  <h2>Delivery log</h2>
+                  <p>Recent signed POSTs. Retry failed deliveries.</p>
+                </div>
+                {webhookDeliveries.length === 0 ? (
+                  <div className="dashboard-empty-state">No deliveries yet.</div>
+                ) : (
+                  <div className="dashboard-table-wrap">
+                    <table className="dashboard-table">
+                      <thead>
+                        <tr>
+                          <th>Status</th>
+                          <th>Event</th>
+                          <th>HTTP</th>
+                          <th>Attempt</th>
+                          <th>When</th>
+                          <th />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {webhookDeliveries.map((delivery) => (
+                          <tr key={delivery.id}>
+                            <td><code>{delivery.status}</code></td>
+                            <td><code>{delivery.event}</code></td>
+                            <td>{delivery.httpStatus ?? '—'}</td>
+                            <td>{delivery.attempt}</td>
+                            <td>{formatDate(delivery.createdAt)}</td>
+                            <td className="dashboard-table-actions">
+                              {delivery.status === 'failed' && (
+                                <button
+                                  type="button"
+                                  className="btn-link"
+                                  disabled={busy}
+                                  onClick={() => void handleRetryDelivery(delivery.id)}
+                                >
+                                  Retry
+                                </button>
+                              )}
+                              {delivery.error && <span title={delivery.error}>err</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
                 <h2>Example payload</h2>
                 <pre className="dashboard-code-block"><code>{WEBHOOK_PAYLOAD_EXAMPLE}</code></pre>

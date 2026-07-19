@@ -5,6 +5,7 @@ export const GITHUB_DOCS_SRC = `${GITHUB_REPO}/tree/main/apps/docs`;
 export const GITHUB_EXAMPLES = `${GITHUB_REPO}/tree/main/examples`;
 export const GITHUB_MANIFESTS = `${GITHUB_REPO}/tree/main/manifests`;
 export const GITHUB_ACTION = `${GITHUB_REPO}/tree/main/packages/meridian-action`;
+export const GITHUB_ACTION_USES = 'islacamp-ph/meridian-dev-backend/packages/meridian-action@v1';
 export const GITHUB_API = `${GITHUB_REPO}/tree/main/packages/api`;
 
 /** In-site quickstart — links to monorepo docs when hosted separately via VITE_DOCS_URL */

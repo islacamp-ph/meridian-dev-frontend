@@ -17,6 +17,7 @@ export interface ApiKeySummary {
   network: 'testnet' | 'mainnet';
   name: string;
   prefix: string;
+  scope?: 'analyze' | 'admin';
   createdAt: string;
   lastUsedAt?: string;
 }
@@ -213,12 +214,13 @@ export async function createApiKey(
   name: string,
   projectId?: string,
   network: 'testnet' | 'mainnet' = 'testnet',
+  scope: 'analyze' | 'admin' = 'analyze',
 ): Promise<ApiKeySummary & { secret: string }> {
   const response = await fetch(apiUrl('/api/keys'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ name, projectId, network }),
+    body: JSON.stringify({ name, projectId, network, scope }),
   });
   const data = await response.json();
   if (!response.ok) {
@@ -271,13 +273,15 @@ export async function listAnalyses(
   projectId?: string,
   limit = 20,
   filters?: { page?: number; verdict?: string; network?: string },
-): Promise<AnalysisSummary[]> {
+): Promise<{ analyses: AnalysisSummary[]; total: number; page: number; limit: number }> {
   const params = new URLSearchParams({ limit: String(limit) });
   if (projectId) params.set('projectId', projectId);
   if (filters?.page) params.set('page', String(filters.page));
   if (filters?.verdict) params.set('verdict', filters.verdict);
   if (filters?.network) params.set('network', filters.network);
-  return (await siteRequest<{ analyses: AnalysisSummary[] }>(`/api/analyses?${params}`)).analyses;
+  return siteRequest<{ analyses: AnalysisSummary[]; total: number; page: number; limit: number }>(
+    `/api/analyses?${params}`,
+  );
 }
 
 export async function getAnalysis(id: string): Promise<AnalysisSummary> {
@@ -310,6 +314,33 @@ export interface WebhookSummary {
 export async function listWebhooks(projectId?: string): Promise<WebhookSummary[]> {
   const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
   return (await siteRequest<{ webhooks: WebhookSummary[] }>(`/api/webhooks${query}`)).webhooks;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  webhookId: string;
+  event: string;
+  status: 'pending' | 'success' | 'failed';
+  httpStatus?: number;
+  attempt: number;
+  error?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export async function listWebhookDeliveries(webhookId?: string): Promise<WebhookDelivery[]> {
+  const params = new URLSearchParams({ limit: '50' });
+  if (webhookId) params.set('webhookId', webhookId);
+  return (await siteRequest<{ deliveries: WebhookDelivery[] }>(
+    `/api/webhooks/deliveries?${params}`,
+  )).deliveries;
+}
+
+export async function retryWebhookDelivery(id: string): Promise<WebhookDelivery> {
+  return (await siteRequest<{ delivery: WebhookDelivery }>(
+    `/api/webhooks/deliveries/${encodeURIComponent(id)}/retry`,
+    { method: 'POST' },
+  )).delivery;
 }
 
 export async function createWebhook(input: {

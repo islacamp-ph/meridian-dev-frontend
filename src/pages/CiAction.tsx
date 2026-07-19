@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: islacamp-ph/meridian-core/packages/meridian-action@main
+      - uses: islacamp-ph/meridian-dev-backend/packages/meridian-action@v1
         with:
           tx-file: tx.xdr
           network: testnet
