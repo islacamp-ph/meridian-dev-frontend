@@ -159,7 +159,10 @@ main {
 .brand-mark {
   flex-shrink: 0;
   display: block;
-  border-radius: 9px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: cover;
 }
 
 .brand-name {
