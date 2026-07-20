@@ -37,12 +37,14 @@ After sign-in, users land on `/dashboard` with:
 
 ### Login methods
 
-1. **Email + password** — always available when the backend has `AUTH_SECRET` + storage
-2. **GitHub OAuth** — shown when the backend has `GITHUB_CLIENT_*` configured
+1. **GitHub OAuth (recommended)** — shown when the backend has `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and `GITHUB_REDIRECT_URI`
+2. **Email + password** — always available when the backend has `AUTH_SECRET` + storage
 
-GitHub button hits `GET {API}/api/auth/github`, which redirects through GitHub and back to `/dashboard`.
+Local callback URL (must match the GitHub OAuth App exactly):
 
-See the backend repo `README` / setup notes for creating the GitHub OAuth App and Supabase schema.
+`http://localhost:5173/api/auth/github/callback`
+
+See backend `docs/AUTH_SETUP.md` for creating the OAuth App.
 
 ## Scripts
 

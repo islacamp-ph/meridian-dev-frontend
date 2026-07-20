@@ -9,9 +9,13 @@ export function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [githubEnabled, setGithubEnabled] = useState(false);
+  const [providersLoaded, setProvidersLoaded] = useState(false);
 
   useEffect(() => {
-    void fetchProviders().then((providers) => setGithubEnabled(providers.github));
+    void fetchProviders().then((providers) => {
+      setGithubEnabled(providers.github);
+      setProvidersLoaded(true);
+    });
   }, []);
 
   async function handleSubmit(event: FormEvent) {
@@ -36,17 +40,24 @@ export function Register() {
   return (
     <AuthLayout
       title="Create account"
-      subtitle="Early beta access to the developer dashboard."
+      subtitle="Sign up with GitHub for the fastest path into the developer dashboard."
     >
-      {githubEnabled && (
+      {providersLoaded && githubEnabled && (
         <>
-          <a className="btn btn-secondary auth-oauth" href={githubLoginUrl()}>
+          <a className="btn btn-primary auth-oauth" href={githubLoginUrl()}>
             Continue with GitHub
           </a>
           <div className="auth-divider" role="separator">
-            <span>or</span>
+            <span>or email</span>
           </div>
         </>
+      )}
+      {providersLoaded && !githubEnabled && (
+        <p className="auth-hint" role="status">
+          Prefer GitHub? Configure OAuth on the API (
+          <code>GITHUB_CLIENT_ID</code>, <code>GITHUB_CLIENT_SECRET</code>,{' '}
+          <code>GITHUB_REDIRECT_URI</code>), then restart <code>ts-api</code>.
+        </p>
       )}
       <form className="auth-form" onSubmit={handleSubmit}>
         <label>
@@ -83,8 +94,8 @@ export function Register() {
           />
         </label>
         {error && <p className="auth-error" role="alert">{error}</p>}
-        <button type="submit" className="btn btn-primary auth-submit" disabled={loading}>
-          {loading ? 'Creating…' : 'Create account'}
+        <button type="submit" className="btn btn-secondary auth-submit" disabled={loading}>
+          {loading ? 'Creating…' : 'Create with email'}
         </button>
       </form>
       <p className="auth-switch">

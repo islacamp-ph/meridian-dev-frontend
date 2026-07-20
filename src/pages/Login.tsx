@@ -17,9 +17,13 @@ export function Login() {
   const [error, setError] = useState(readQueryError);
   const [loading, setLoading] = useState(false);
   const [githubEnabled, setGithubEnabled] = useState(false);
+  const [providersLoaded, setProvidersLoaded] = useState(false);
 
   useEffect(() => {
-    void fetchProviders().then((providers) => setGithubEnabled(providers.github));
+    void fetchProviders().then((providers) => {
+      setGithubEnabled(providers.github);
+      setProvidersLoaded(true);
+    });
   }, []);
 
   async function handleSubmit(event: FormEvent) {
@@ -44,17 +48,24 @@ export function Login() {
   return (
     <AuthLayout
       title="Sign in"
-      subtitle="Access your dashboard and API keys."
+      subtitle="Continue with GitHub to open your dashboard and API keys."
     >
-      {githubEnabled && (
+      {providersLoaded && githubEnabled && (
         <>
-          <a className="btn btn-secondary auth-oauth" href={githubLoginUrl()}>
+          <a className="btn btn-primary auth-oauth" href={githubLoginUrl()}>
             Continue with GitHub
           </a>
           <div className="auth-divider" role="separator">
-            <span>or</span>
+            <span>or email</span>
           </div>
         </>
+      )}
+      {providersLoaded && !githubEnabled && (
+        <p className="auth-hint" role="status">
+          GitHub sign-in is the recommended path. Add{' '}
+          <code>GITHUB_CLIENT_ID</code>, <code>GITHUB_CLIENT_SECRET</code>, and{' '}
+          <code>GITHUB_REDIRECT_URI</code> on the API, then restart <code>ts-api</code>.
+        </p>
       )}
       <form className="auth-form" onSubmit={handleSubmit}>
         <label>
@@ -80,8 +91,8 @@ export function Login() {
           />
         </label>
         {error && <p className="auth-error" role="alert">{error}</p>}
-        <button type="submit" className="btn btn-primary auth-submit" disabled={loading}>
-          {loading ? 'Signing in…' : 'Sign in'}
+        <button type="submit" className="btn btn-secondary auth-submit" disabled={loading}>
+          {loading ? 'Signing in…' : 'Sign in with email'}
         </button>
       </form>
       <p className="auth-switch">
