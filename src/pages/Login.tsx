@@ -1,10 +1,14 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { AuthLayout } from '../components/AuthLayout';
-import { fetchProviders, githubLoginUrl, login } from '../lib/api';
+import { fetchProviders, fetchSession, githubLoginUrl, login } from '../lib/api';
 
 function readQueryError(): string {
   const params = new URLSearchParams(window.location.search);
-  return params.get('error') ?? '';
+  const error = params.get('error') ?? '';
+  if (error === 'session') {
+    return 'Signed in, but the session cookie was not kept. For local dev, ensure the API sets COOKIE_SECURE=false. For a separate API host, use same-origin proxy or COOKIE_SAMESITE=none over HTTPS.';
+  }
+  return error;
 }
 
 export function Login() {
@@ -24,7 +28,13 @@ export function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      window.location.href = '/dashboard';
+      const session = await fetchSession();
+      if (!session.authenticated) {
+        throw new Error(
+          'Login succeeded but no session cookie was stored. For local Docker: COOKIE_SECURE=false. If VITE_API_URL points at another origin, proxy /api through the site or set COOKIE_SAMESITE=none on HTTPS.',
+        );
+      }
+      window.location.assign('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       setLoading(false);

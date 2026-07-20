@@ -232,7 +232,7 @@ export function Dashboard() {
     async function load() {
       const session = await fetchSession();
       if (!session.authenticated || !session.user) {
-        window.location.href = '/login';
+        window.location.assign('/login?error=session');
         return;
       }
       setUser(session.user);
